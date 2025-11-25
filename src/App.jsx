@@ -217,6 +217,8 @@ export default function TravelApp() {
   const [currentUser, setCurrentUser] = useState(null);
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  // NEW STATE: Tracks if the initial snapshot from Firestore has been processed
+  const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false); 
 
   // Modals & Active Items
   const [modalOpen, setModalOpen] = useState(null);
@@ -252,38 +254,51 @@ export default function TravelApp() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch Data (Real-time Listener)
+  // 2. Fetch Data (Real-time Listener) - DEPENDS on Authentication
   useEffect(() => {
+    // If Firebase isn't configured OR user isn't authenticated yet, do nothing.
     if (!currentUser || !db) {
         if (!app) setIsLoadingData(false); // If no app configured, stop loading
         return;
     }
 
     const userDocRef = doc(db, "users", currentUser.uid);
-    const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+    
+    // Flag to ensure we only write default data once, on first load
+    let isFirstSnapshot = true; 
+
+    const unsubscribe = onSnapshot(userDocRef, async (docSnapshot) => {
         if (docSnapshot.exists()) {
             const data = docSnapshot.data();
             if (data.allTrips) setAllTrips(data.allTrips);
             if (data.currentTripId) setCurrentTripId(data.currentTripId);
-        } else {
-            // First time user: Write default data
-             setDoc(userDocRef, {
+        } else if (isFirstSnapshot) {
+            // Document doesn't exist, this is a brand new user. Write defaults.
+            await setDoc(userDocRef, {
                  allTrips: [HK_MACAU_2026],
                  currentTripId: HK_MACAU_2026.id
              }, { merge: true });
+            // The next snapshot will contain the data we just wrote.
         }
+        
+        // This is the critical line to ensure the UI waits for the data to be set.
+        setHasLoadedInitialData(true);
         setIsLoadingData(false);
+        isFirstSnapshot = false;
+
     }, (error) => {
         console.error("Fetch Error", error);
         setIsLoadingData(false);
+        setHasLoadedInitialData(true);
     });
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser]); // Re-run when currentUser changes (i.e., when auth completes)
 
-  // 3. Auto-Save Logic (Debounced)
+  // 3. Auto-Save Logic (Debounced) - DEPENDS on Data being loaded first
   useEffect(() => {
-    if (!currentUser || !db || isLoadingData) return;
+    // Only proceed if user is ready AND initial data load is complete
+    if (!currentUser || !db || !hasLoadedInitialData) return;
 
     setIsCloudSyncing(true);
     
@@ -311,7 +326,7 @@ export default function TravelApp() {
     return () => {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [allTrips, currentTripId, currentUser, isLoadingData]);
+  }, [allTrips, currentTripId, currentUser, hasLoadedInitialData]); // Added hasLoadedInitialData dependency
 
   // Theme Effect
   useEffect(() => {
