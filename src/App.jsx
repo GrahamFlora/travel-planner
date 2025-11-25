@@ -33,9 +33,10 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Helper function to construct the CORRECT Firestore document reference path
-// Path: /artifacts/{appId}/users/{userId}/trip
+// Path: /artifacts/{appId}/users/{userId}/trip/data (6 segments)
 const getUserDocRef = (database, userId) => {
-    const path = `artifacts/${appId}/users/${userId}/trip`;
+    // FIX: Added '/data' to make the segment count 6 (even), thus creating a valid Document reference.
+    const path = `artifacts/${appId}/users/${userId}/trip/data`;
     return doc(database, path);
 };
 // --- END ENVIRONMENT SETUP ---
