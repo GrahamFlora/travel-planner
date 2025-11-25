@@ -28,7 +28,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 // (We add a check to ensure we don't crash if config is empty during preview)
-const app = firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE" ? initializeApp(firebaseConfig) : null;
+const app = firebaseConfig.apiKey !== "AIzaSyALo5BhgnOaokkQavBpGxhad6CFJiSmrMU" ? initializeApp(firebaseConfig) : null;
 const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
 
@@ -298,9 +298,12 @@ export default function TravelApp() {
                 allTrips: allTrips,
                 currentTripId: currentTripId
             }, { merge: true });
-            setIsCloudSyncing(false);
+            
         } catch (error) {
             console.error("Save Error", error);
+            
+        } finally {
+            // GUARANTEE the loading indicator is hidden after save attempt
             setIsCloudSyncing(false);
         }
     }, 1000);
