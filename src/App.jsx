@@ -13,9 +13,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { getFirestore, doc, setDoc, onSnapshot } from "firebase/firestore";
 
-// --- PASTE YOUR FIREBASE CONFIG HERE ---
-// 1. Go to console.firebase.google.com
-// 2. Project Settings -> General -> Your Apps -> SDK Setup and Config
+// --- FIREBASE CONFIG (Copied from User's input) ---
 const firebaseConfig = {
   apiKey: "AIzaSyALo5BhgnOaokkQavBpGxhad6CFJiSmrMU",
   authDomain: "travel-planner-f515b.firebaseapp.com",
@@ -26,11 +24,22 @@ const firebaseConfig = {
   measurementId: "G-ZRD0VRVVQ6"
 };
 
+// --- GLOBAL FIREBASE SETUP (Using projectId as the app identifier to match user's rules) ---
+const appIdentifier = firebaseConfig.projectId; // Use the projectId as the unique identifier
+
 // Initialize Firebase
-// (We add a check to ensure we don't crash if config is empty during preview)
-const app = firebaseConfig.apiKey !== "AIzaSyALo5BhgnOaokkQavBpGxhad6CFJiSmrMU" ? initializeApp(firebaseConfig) : null;
-const auth = app ? getAuth(app) : null;
-const db = app ? getFirestore(app) : null;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Helper function to construct the CORRECT Firestore document reference path
+// This path MUST match the user's security rule: /artifacts/{projectId}/users/{userId}/trip
+const getUserDocRef = (database, userId, appIdentifier) => {
+    // This path is required to match your security rules
+    const path = `artifacts/${appIdentifier}/users/${userId}/trip`;
+    return doc(database, path);
+};
+// --- END GLOBAL FIREBASE SETUP ---
 
 // --- Data: Default Data (Used if no cloud data exists) ---
 const HK_MACAU_2026 = {
@@ -209,7 +218,10 @@ export default function TravelApp() {
   const [activeDayIdx, setActiveDayIdx] = useState(0);
   const [isEditMode, setIsEditMode] = useState(false);
   const [filter, setFilter] = useState('all');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Initialize dark mode from localStorage
+    return localStorage.getItem('theme') === 'dark';
+  });
   const [viewMode, setViewMode] = useState('timeline');
   const [isTripDropdownOpen, setIsTripDropdownOpen] = useState(false);
   
@@ -238,7 +250,7 @@ export default function TravelApp() {
   const trip = allTrips.find(t => t.id === currentTripId) || allTrips[0];
   const activeDay = trip.days[activeDayIdx] || trip.days[0];
   const filteredActivities = activeDay?.activities.filter(a => filter === 'all' || a.type === filter) || [];
-
+    
   // --- FIREBASE EFFECTS ---
 
   // 1. Authenticate User (Anonymous)
@@ -256,13 +268,16 @@ export default function TravelApp() {
 
   // 2. Fetch Data (Real-time Listener) - DEPENDS on Authentication
   useEffect(() => {
-    // If Firebase isn't configured OR user isn't authenticated yet, do nothing.
+    // If user isn't authenticated yet, do nothing.
     if (!currentUser || !db) {
         if (!app) setIsLoadingData(false); // If no app configured, stop loading
         return;
     }
 
-    const userDocRef = doc(db, "users", currentUser.uid);
+    // CRITICAL: Use the correct, rules-matching path
+    // The path is artifacts/travel-planner-f515b/users/{userId}/trip
+    const appIdentifier = firebaseConfig.projectId; 
+    const userDocRef = getUserDocRef(db, currentUser.uid, appIdentifier);
     
     // Flag to ensure we only write default data once, on first load
     let isFirstSnapshot = true; 
@@ -274,11 +289,17 @@ export default function TravelApp() {
             if (data.currentTripId) setCurrentTripId(data.currentTripId);
         } else if (isFirstSnapshot) {
             // Document doesn't exist, this is a brand new user. Write defaults.
-            await setDoc(userDocRef, {
-                 allTrips: [HK_MACAU_2026],
-                 currentTripId: HK_MACAU_2026.id
-             }, { merge: true });
-            // The next snapshot will contain the data we just wrote.
+            try {
+                await setDoc(userDocRef, {
+                    allTrips: [HK_MACAU_2026],
+                    currentTripId: HK_MACAU_2026.id
+                }, { merge: true });
+            } catch (e) {
+                console.error("Failed to write initial default data (Security Rules?):", e);
+                // Fallback: load default data locally for the session if writing fails.
+                setAllTrips([HK_MACAU_2026]);
+                setCurrentTripId(HK_MACAU_2026.id);
+            }
         }
         
         // This is the critical line to ensure the UI waits for the data to be set.
@@ -293,7 +314,7 @@ export default function TravelApp() {
     });
 
     return () => unsubscribe();
-  }, [currentUser]); // Re-run when currentUser changes (i.e., when auth completes)
+  }, [currentUser]); 
 
   // 3. Auto-Save Logic (Debounced) - DEPENDS on Data being loaded first
   useEffect(() => {
@@ -305,17 +326,19 @@ export default function TravelApp() {
     // Clear pending saves
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
+    const appIdentifier = firebaseConfig.projectId;
+    const userDocRef = getUserDocRef(db, currentUser.uid, appIdentifier);
+
     // Set new save timeout (1 second debounce)
     saveTimeoutRef.current = setTimeout(async () => {
         try {
-            const userDocRef = doc(db, "users", currentUser.uid);
             await setDoc(userDocRef, {
                 allTrips: allTrips,
                 currentTripId: currentTripId
             }, { merge: true });
             
         } catch (error) {
-            console.error("Save Error", error);
+            console.error("Save Error:", error);
             
         } finally {
             // GUARANTEE the loading indicator is hidden after save attempt
@@ -330,12 +353,21 @@ export default function TravelApp() {
 
   // Theme Effect
   useEffect(() => {
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    // Initialize Dark Mode from local storage on first render
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        setIsDarkMode(savedTheme === 'dark');
+    }
+
+    // Set theme class on document root
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
+    // Save state whenever it changes
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    
   }, [isDarkMode]);
 
   // Actions
@@ -401,10 +433,10 @@ export default function TravelApp() {
   const handleDeleteDay = (e, dayId) => {
     e.stopPropagation();
     if (trip.days.length <= 1) {
-        alert("You cannot delete the only day!");
+        console.warn("Cannot delete the only day!");
         return;
     }
-    if (confirm("Delete this day and all its activities?")) {
+    if (window.confirm("Delete this day and all its activities?")) {
         const newDays = trip.days.filter(d => d.id !== dayId);
         if (activeDayIdx >= newDays.length) setActiveDayIdx(newDays.length - 1);
         updateCurrentTrip({ days: newDays });
@@ -460,7 +492,7 @@ export default function TravelApp() {
               <div className="flex flex-col items-center gap-4">
                   <Loader2 className="animate-spin text-indigo-600" size={32} />
                   <p>Loading Trip Data...</p>
-                  {!app && <p className="text-xs text-red-500 max-w-xs text-center">Firebase Config Missing. Edit the code to add your keys.</p>}
+                  {/* Note: Removed conditional Firebase check here as app is now initialized with user config */}
               </div>
           </div>
       );
@@ -601,7 +633,7 @@ export default function TravelApp() {
                         </div>
                     )}
                     {filteredActivities.map((act, idx) => (
-                        <div key={act.id} className={`relative md:grid md:grid-cols-[140px_1fr] gap-6 group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`} draggable={isEditMode && filter === 'all'} onDragStart={(e) => { if (!isEditMode || filter !== 'all') { e.preventDefault(); return; } dragItem.current = idx; e.currentTarget.style.opacity = '0.5'; }} onDragEnd={(e) => { e.currentTarget.style.opacity = '1'; dragItem.current = null; dragOverItem.current = null; }} onDragEnter={(e) => { if (!isEditMode || filter !== 'all') return; dragOverItem.current = index; if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) { const newDays = [...trip.days]; const items = [...newDays[activeDayIdx].activities]; const draggedItemContent = items[dragItem.current]; items.splice(dragItem.current, 1); items.splice(dragOverItem.current, 0, draggedItemContent); newDays[activeDayIdx].activities = items; updateCurrentTrip({ days: newDays }); dragItem.current = dragOverItem.current; } }} onDragOver={(e) => e.preventDefault()}>
+                        <div key={act.id} className={`relative md:grid md:grid-cols-[140px_1fr] gap-6 group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`} draggable={isEditMode && filter === 'all'} onDragStart={(e) => { if (!isEditMode || filter !== 'all') { e.preventDefault(); return; } dragItem.current = idx; e.currentTarget.style.opacity = '0.5'; }} onDragEnd={(e) => { e.currentTarget.style.opacity = '1'; dragItem.current = null; dragOverItem.current = null; }} onDragEnter={(e) => { if (!isEditMode || filter !== 'all') return; dragOverItem.current = idx; if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) { const newDays = [...trip.days]; const items = [...newDays[activeDayIdx].activities]; const draggedItemContent = items[dragItem.current]; items.splice(dragItem.current, 1); items.splice(dragOverItem.current, 0, draggedItemContent); newDays[activeDayIdx].activities = items; updateCurrentTrip({ days: newDays }); dragItem.current = dragOverItem.current; } }} onDragOver={(e) => e.preventDefault()}>
                             <div className="absolute left-[9rem] top-8 w-3 h-3 bg-white dark:bg-slate-950 border-2 border-indigo-500 rounded-full z-10 hidden md:block -translate-x-[5px]"></div>
                             <div className="hidden md:flex flex-col items-end pt-5 pr-4 text-right">
                                 {isEditMode ? (
