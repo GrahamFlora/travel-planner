@@ -14,7 +14,16 @@ import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged }
 import { getFirestore, doc, setDoc, onSnapshot } from "firebase/firestore";
 
 // --- ENVIRONMENT SETUP (CRITICAL FOR PERSISTENCE) ---
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "MOCK_KEY" };
+// NOTE: Using hardcoded configuration provided by the user to ensure 'projectId' is present and bypass environment variable issue.
+const firebaseConfig = {
+    apiKey: "AIzaSyALo5BhgnOaokkQavBpGxhad6CFJiSmrMU",
+    authDomain: "travel-planner-f515b.firebaseapp.com",
+    projectId: "travel-planner-f515b", // CRITICAL: This was missing in the fallback
+    storageBucket: "travel-planner-f515b.firebasestorage.app",
+    messagingSenderId: "10111266202",
+    appId: "1:10111266202:web:8e7e027e0c0680200c1e23",
+    measurementId: "G-ZRD0VRVVQ6"
+};
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
