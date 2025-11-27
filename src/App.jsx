@@ -34,13 +34,8 @@ const firebaseConfig = {
     measurementId: "G-ZRD0VRVVQ6"
 };
 
-// Robust appId detection
-const getAppId = () => {
-    if (typeof window !== 'undefined' && window.__app_id) return window.__app_id;
-    if (typeof __app_id !== 'undefined') return __app_id;
-    return 'default-app-id';
-};
-const appId = getAppId();
+// Use global variable for appId if available (Robust pattern)
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
 // Initialize Firebase
@@ -106,8 +101,31 @@ const useWeather = (lat, lon) => {
     useEffect(() => {
         const fetchWeather = async () => {
             try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&current_weather=true&timezone=auto`);
-                const data = await res.json();
+                // Implementing exponential backoff for API call
+                let response = null;
+                let attempts = 0;
+                const maxAttempts = 5;
+                let delay = 1000;
+                
+                while (attempts < maxAttempts) {
+                    try {
+                        response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&current_weather=true&timezone=auto`);
+                        if (response.ok) break;
+                    } catch (e) {
+                        // Network error, proceed to retry
+                    }
+
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2; // Exponential increase
+                    }
+                }
+
+                if (!response || !response.ok) throw new Error("Weather API failed after retries.");
+
+
+                const data = await response.json();
                 const weatherMap = {};
                 if (data.daily) {
                     data.daily.time.forEach((time, index) => {
@@ -527,8 +545,7 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut }) => {
 export default function TravelApp() {
     const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
-    useEffect(() => { const unsub = onAuthStateChanged(auth, (u) => { setUser(u); setAuthLoading(false); }); return () => unsub(); }, []);
-
+    
     const [trips, setTrips] = useState([]);
     const [currentTripId, setCurrentTripId] = useState(null);
     const [view, setView] = useState('dashboard'); // 'dashboard' | 'trip'
@@ -542,6 +559,35 @@ export default function TravelApp() {
     const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
     const [imageEditState, setImageEditState] = useState(null); // { dayIdx, actId, url }
     const [sharedCode, setSharedCode] = useState(null);
+
+    // --- MANDATORY AUTH PATTERN & DATA FETCHING ---
+    useEffect(() => {
+        const initAuth = async () => {
+            let signedIn = false;
+
+            if (initialAuthToken) {
+                try {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    signedIn = true;
+                } catch (err) {
+                    // Log the error but proceed to fallback
+                    console.error("Custom token auth failed:", err);
+                }
+            } 
+            
+            // Fallback: If custom token wasn't attempted or failed, sign in anonymously.
+            if (!signedIn) {
+                 await signInAnonymously(auth);
+            }
+        };
+        initAuth();
+
+        const unsub = onAuthStateChanged(auth, (u) => { 
+            setUser(u); 
+            setAuthLoading(false); 
+        }); 
+        return () => unsub(); 
+    }, []);
 
     useEffect(() => {
         if (!user) return;
@@ -611,7 +657,7 @@ export default function TravelApp() {
         } catch (error) {
             console.error("Share Error:", error);
             if (error.code === 'permission-denied') {
-                alert("Unable to share publicly due to security settings.");
+                alert("Permission Error: Please check your Firestore Security Rules in the Firebase Console. You need to allow writes to the 'public' collection for authenticated users.");
             } else {
                 alert(`Error sharing trip: ${error.message}`);
             }
@@ -697,20 +743,20 @@ export default function TravelApp() {
              {/* --- HERO SECTION --- */}
             <div className="relative h-[40vh] md:h-[50vh] w-full group">
                 <div className="absolute inset-0 overflow-hidden rounded-b-3xl">
-                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
-                     <img src={trip.coverImage} alt="Trip Cover" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80'} />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
+                      <img src={trip.coverImage} alt="Trip Cover" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80'} />
                 </div>
                 {/* Navbar */}
                 <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
-                     <Logo size="sm" onClick={() => setView('dashboard')} />
-                     <div className="flex gap-2">
+                      <Logo size="sm" onClick={() => setView('dashboard')} />
+                      <div className="flex gap-2">
                         {isEditMode && <button onClick={() => setModalOpen('share')} className="p-2.5 bg-indigo-600 rounded-full hover:bg-indigo-700 shadow-lg"><Share2 size={18} /></button>}
                         <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`}>{isEditMode ? <Unlock size={18} /> : <Lock size={18} />}</button>
                         <button onClick={() => setViewMode(viewMode === 'budget' ? 'timeline' : 'budget')} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${viewMode === 'budget' ? 'bg-emerald-500 text-white' : 'bg-black/30 border-white/20'}`}><DollarSign size={18} /></button>
                         <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
                         <button onClick={() => setModalOpen('settings')} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md"><Settings size={18} /></button>
                          <button onClick={() => setShowSignOutConfirm(true)} className="p-2.5 bg-red-500/80 rounded-full hover:bg-red-600 backdrop-blur-md"><LogOut size={18} /></button>
-                     </div>
+                      </div>
                 </div>
                 {/* Title Block */}
                 <div className="absolute bottom-0 left-0 right-0 z-20 p-6 md:p-12 max-w-6xl mx-auto">
@@ -948,8 +994,8 @@ export default function TravelApp() {
                     </div>
                     <div className="space-y-2">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Image URL</label>
-                        <input
-                            value={imageEditState?.url || ''}
+                        <input 
+                            value={imageEditState?.url || ''} 
                             onChange={(e) => setImageEditState(prev => ({ ...prev, url: e.target.value }))}
                             className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none text-sm border-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
                             placeholder="https://..."
