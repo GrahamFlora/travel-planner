@@ -6,7 +6,8 @@ import {
   ChevronRight, Map, List, Filter, Camera, ChevronDown, Landmark,
   AlertTriangle, Check, Loader2, Plane, ShoppingBag, Coffee, Star, 
   DollarSign, BarChart3, User, LogOut, Share2, Download, CloudRain,
-  Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy
+  Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy,
+  Globe, Search
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -44,27 +45,57 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // --- FIRESTORE PATH HELPERS ---
-// Using strict path construction to avoid permission errors
 const getUserTripRef = (userId) => doc(db, 'artifacts', appId, 'users', userId, 'trip', 'data');
 const getUserBudgetRef = (userId) => doc(db, 'artifacts', appId, 'users', userId, 'budget', 'data');
-
-// New: Shared trips go into a specific 'shared_trips' collection in public data
 const getSharedTripRef = (shareCode) => doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', shareCode);
 
 // --- GLOBAL HELPERS ---
 const EXCHANGE_RATES = {
-    USD: 1.0, PHP: 58.75, HKD: 7.83, EUR: 0.92, JPY: 155.0, GBP: 0.80, MOP: 8.01
+    USD: 1.0, PHP: 58.75, HKD: 7.83, EUR: 0.92, JPY: 155.0, GBP: 0.80, MOP: 8.01,
+    SGD: 1.35, THB: 36.5, KRW: 1380, CNY: 7.23, AUD: 1.52, CAD: 1.37
 };
+
+// Updated Currency Options with ISO Country Codes for Flag Images
 const CURRENCY_OPTIONS = [
-    { code: 'PHP', name: 'Philippine Peso', symbol: '₱' },
-    { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$' },
-    { code: 'USD', name: 'US Dollar', symbol: '$' },
-    { code: 'EUR', name: 'Euro', symbol: '€' },
-    { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-    { code: 'GBP', name: 'British Pound', symbol: '£' },
-    { code: 'MOP', name: 'Macau Pataca', symbol: 'MOP$' },
+    { code: 'PHP', name: 'Philippine Peso', symbol: '₱', countryCode: 'ph' },
+    { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$', countryCode: 'hk' },
+    { code: 'USD', name: 'US Dollar', symbol: '$', countryCode: 'us' },
+    { code: 'EUR', name: 'Euro', symbol: '€', countryCode: 'eu' },
+    { code: 'JPY', name: 'Japanese Yen', symbol: '¥', countryCode: 'jp' },
+    { code: 'GBP', name: 'British Pound', symbol: '£', countryCode: 'gb' },
+    { code: 'MOP', name: 'Macau Pataca', symbol: 'MOP$', countryCode: 'mo' },
+    { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$', countryCode: 'sg' },
+    { code: 'THB', name: 'Thai Baht', symbol: '฿', countryCode: 'th' },
+    { code: 'KRW', name: 'South Korean Won', symbol: '₩', countryCode: 'kr' },
+    { code: 'CNY', name: 'Chinese Yuan', symbol: '¥', countryCode: 'cn' },
+    { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', countryCode: 'au' },
+    { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$', countryCode: 'ca' },
 ];
 const BASE_CURRENCY = 'HKD'; 
+
+// Pre-defined Countries for Weather with ISO Codes
+const COUNTRY_DATA = [
+    { name: 'Hong Kong', lat: 22.3193, lon: 114.1694, countryCode: 'hk' },
+    { name: 'Macau', lat: 22.1987, lon: 113.5439, countryCode: 'mo' },
+    { name: 'Japan (Tokyo)', lat: 35.6762, lon: 139.6503, countryCode: 'jp' },
+    { name: 'Japan (Osaka)', lat: 34.6937, lon: 135.5023, countryCode: 'jp' },
+    { name: 'Philippines (Manila)', lat: 14.5995, lon: 120.9842, countryCode: 'ph' },
+    { name: 'Singapore', lat: 1.3521, lon: 103.8198, countryCode: 'sg' },
+    { name: 'Thailand (Bangkok)', lat: 13.7563, lon: 100.5018, countryCode: 'th' },
+    { name: 'South Korea (Seoul)', lat: 37.5665, lon: 126.9780, countryCode: 'kr' },
+    { name: 'China (Beijing)', lat: 39.9042, lon: 116.4074, countryCode: 'cn' },
+    { name: 'USA (New York)', lat: 40.7128, lon: -74.0060, countryCode: 'us' },
+    { name: 'USA (Los Angeles)', lat: 34.0522, lon: -118.2437, countryCode: 'us' },
+    { name: 'UK (London)', lat: 51.5074, lon: -0.1278, countryCode: 'gb' },
+    { name: 'France (Paris)', lat: 48.8566, lon: 2.3522, countryCode: 'fr' },
+    { name: 'Germany (Berlin)', lat: 52.5200, lon: 13.4050, countryCode: 'de' },
+    { name: 'Italy (Rome)', lat: 41.9028, lon: 12.4964, countryCode: 'it' },
+    { name: 'Spain (Madrid)', lat: 40.4168, lon: -3.7038, countryCode: 'es' },
+    { name: 'Australia (Sydney)', lat: -33.8688, lon: 151.2093, countryCode: 'au' },
+    { name: 'Canada (Toronto)', lat: 43.6510, lon: -79.3470, countryCode: 'ca' },
+];
+
+const getFlagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
 
 const formatCurrency = (amount, currencyCode) => {
     const currency = CURRENCY_OPTIONS.find(c => c.code === currencyCode) || { symbol: currencyCode };
@@ -95,10 +126,59 @@ const getTypeIcon = (type) => {
     }
 };
 
+// --- CUSTOM SELECT COMPONENT (Supports Images) ---
+const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption, renderValue }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef(null);
+
+    // Close on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (containerRef.current && !containerRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const selectedOption = options.find(opt => opt.value === value);
+
+    return (
+        <div className="relative w-full" ref={containerRef}>
+            <button
+                type="button"
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full h-12 bg-slate-100 dark:bg-slate-700 rounded-xl px-4 flex items-center justify-between outline-none border border-transparent focus:border-indigo-500 transition-all text-slate-900 dark:text-white"
+            >
+                {selectedOption ? (renderValue ? renderValue(selectedOption) : selectedOption.label) : <span className="text-slate-400">{placeholder}</span>}
+                <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {isOpen && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
+                    {options.map((opt) => (
+                        <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                            className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors ${value === opt.value ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}
+                        >
+                            {renderOption ? renderOption(opt) : opt.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 // --- WEATHER HOOK ---
 const useWeather = (lat, lon) => {
     const [weatherData, setWeatherData] = useState({});
     useEffect(() => {
+        if (!lat || !lon) return;
+
         const fetchWeather = async () => {
             try {
                 // Implementing exponential backoff for API call
@@ -164,26 +244,6 @@ const WeatherDisplay = ({ date, weatherData }) => {
             <Icon size={12} className="mr-1" /> {tempText}
         </div>
     );
-};
-
-// --- DATA: TEMPLATE ONLY (NOT DEFAULT FOR NEW USERS) ---
-const HK_MACAU_TEMPLATE = {
-  id: 'hk_macau_2026',
-  title: 'Hong Kong & Macau 2026',
-  startDate: '2026-01-15',
-  coverImage: 'https://images.unsplash.com/photo-1506318137071-a8bcbf6d94ea?auto=format&fit=crop&w=2000&q=80',
-  companions: ['Family'],
-  days: [
-    {
-      id: 'd1', date: '2026-01-15', title: 'Day 1: Arrival & Lantau', summary: 'Arrival in HK, Citygate Outlets, and the Big Buddha.',
-      activities: [
-        { id: 'd1_a1', time: '05:00 - 07:00', title: 'Departure from Manila (NAIA T3)', type: 'travel', desc: 'Arrive 2h early for check-in.', details: 'Flight departs 7:10 AM.', image: 'https://images.unsplash.com/photo-1570125909232-eb2be79a1c74?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd1_a2', time: '07:10 - 09:45', title: 'Flight to Hong Kong', type: 'travel', desc: 'Flight duration approx 2.5 hours.', details: '', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd1_a3', time: '10:00 - 11:00', title: 'Arrival HKIA & Transfer', type: 'travel', desc: 'Transfer to Novotel Citygate.', details: 'Free hotel shuttle (~5 min) or taxi. Check-in and freshen up.', image: 'https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd1_a4', time: '11:00 - 12:30', title: 'Citygate Outlets & Lunch', type: 'shopping', desc: 'Outlet shopping and lunch.', details: 'Food Opera (Asian favorites) or Oolaa Tung Chung (Western).', image: 'https://images.unsplash.com/photo-1558981408-db0ecd8a1ee4?auto=format&fit=crop&w=600&q=80' },
-      ]
-    }
-  ]
 };
 
 // --- COMPONENTS ---
@@ -378,14 +438,49 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase }) => {
     };
     const inputCurrencySymbol = currencyOptions.find(c => c.code === inputCurrencyCode)?.symbol || '';
 
+    // Prepare options for CustomSelect
+    const selectOptions = currencyOptions.map(c => ({
+        value: c.code,
+        label: c.code,
+        icon: getFlagUrl(c.countryCode)
+    }));
+
     return (
         <form onSubmit={handleSubmit} className="p-4 md:p-6 bg-white dark:bg-slate-800 rounded-2xl space-y-4">
             <h3 className="text-lg font-bold dark:text-white">Log Expense</h3>
             <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Description</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none" placeholder="e.g. Dinner" required/></div>
+            
             <div className="grid grid-cols-3 gap-3">
-                 <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Currency</label><select value={inputCurrencyCode} onChange={(e) => setInputCurrencyCode(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-2 py-3 outline-none text-sm appearance-none text-center font-bold">{currencyOptions.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}</select></div>
-                <div className="space-y-1 col-span-2"><label className="text-xs font-bold text-slate-400 uppercase">Amount</label><div className="relative"><span className="absolute left-4 top-3 text-slate-400">{inputCurrencySymbol}</span><input type="number" step="0.01" value={amountInput} onChange={(e) => setAmountInput(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl pl-8 pr-4 py-3 outline-none font-mono font-bold text-lg" placeholder="0.00" required/></div></div>
+                 <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase">Currency</label>
+                    <CustomIconSelect 
+                        options={selectOptions}
+                        value={inputCurrencyCode}
+                        onChange={setInputCurrencyCode}
+                        placeholder="Select"
+                        renderValue={(opt) => (
+                            <div className="flex items-center gap-2 justify-center w-full">
+                                <img src={opt.icon} alt="" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
+                                <span className="font-bold">{opt.label}</span>
+                            </div>
+                        )}
+                        renderOption={(opt) => (
+                            <div className="flex items-center gap-3">
+                                <img src={opt.icon} alt="" className="w-6 h-4 object-cover rounded-sm shadow-sm" />
+                                <span className="font-bold">{opt.label}</span>
+                            </div>
+                        )}
+                    />
+                </div>
+                <div className="space-y-1 col-span-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase">Amount</label>
+                    <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{inputCurrencySymbol}</span>
+                        <input type="number" step="0.01" value={amountInput} onChange={(e) => setAmountInput(e.target.value)} className="w-full h-12 bg-slate-100 dark:bg-slate-700 rounded-xl pl-14 pr-4 outline-none font-mono font-bold text-lg" placeholder="0.00" required/>
+                    </div>
+                </div>
             </div>
+            
             <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Date</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none"/></div>
             <div className="space-y-2"><label className="text-xs font-bold text-slate-400 uppercase">Category</label><IconPicker selected={category} onSelect={setCategory} /></div>
             <button type="submit" className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 rounded-xl mt-2 active:scale-95 transition-transform">Save Expense</button>
@@ -393,7 +488,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase }) => {
     );
 };
 
-const BudgetView = ({ currentUser, isEditMode, db }) => {
+const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const [expenses, setExpenses] = useState([]);
     const [targetCurrency, setTargetCurrency] = useState('HKD');
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -410,40 +505,87 @@ const BudgetView = ({ currentUser, isEditMode, db }) => {
     const handleDelete = async (id) => { const updated = expenses.filter(e => e.id !== id); setExpenses(updated); await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); };
     const convertToBase = (amt, code) => (amt / (EXCHANGE_RATES[code] || 1)) * EXCHANGE_RATES[BASE_CURRENCY];
     
+    // Calculations
     const totalBase = expenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
     const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
     const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
     const totalDisplay = totalBase * (targetRate / baseRate);
 
+    // Grouping by Date
+    const expensesByDate = useMemo(() => {
+        const grouped = {};
+        expenses.forEach(e => {
+            const d = e.date || 'Unscheduled';
+            if (!grouped[d]) grouped[d] = [];
+            grouped[d].push(e);
+        });
+        return grouped;
+    }, [expenses]);
+
+    const sortedDates = Object.keys(expensesByDate).sort();
+    
+    // Custom select options for main display
+    const currencySelectOptions = CURRENCY_OPTIONS.map(c => ({ value: c.code, label: c.code, icon: getFlagUrl(c.countryCode) }));
+
+
     return (
         <div className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
+            {/* Grand Total Card */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
                 <div className="relative z-10">
-                    <p className="text-slate-400 text-sm font-medium mb-1">Total Spent</p>
+                    <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
                     <h1 className="text-4xl font-black mb-6">{formatCurrency(totalDisplay, targetCurrency)}</h1>
                     <div className="flex gap-2">
                          <button onClick={() => isEditMode && setIsAddModalOpen(true)} disabled={!isEditMode} className="bg-white text-black px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-100 disabled:opacity-50"><Plus size={16} /> Add Expense</button>
-                         <select value={targetCurrency} onChange={e => setTargetCurrency(e.target.value)} className="bg-white/10 text-white border border-white/20 px-3 py-2 rounded-xl text-sm outline-none appearance-none">{CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code} className="text-black">{c.code}</option>)}</select>
+                         {/* Simple select for view only since it's cleaner on header */}
+                         <select value={targetCurrency} onChange={e => setTargetCurrency(e.target.value)} className="bg-white/10 text-white border border-white/20 px-3 py-2 rounded-xl text-sm outline-none appearance-none font-bold">
+                            {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code} className="text-black">{c.code}</option>)}
+                         </select>
                     </div>
                 </div>
             </div>
-            <div className="space-y-3">
-                {expenses.length === 0 ? ( <div className="text-center py-10 text-slate-400"><Wallet size={48} className="mx-auto mb-2 opacity-20" /><p>No expenses yet.</p></div> ) : ( expenses.slice().reverse().map(e => <ExpenseCard key={e.id} expense={e} onDelete={handleDelete} isEditMode={isEditMode} currencyOptions={CURRENCY_OPTIONS} />) )}
+
+            {/* Expenses List Grouped by Date */}
+            <div className="space-y-6">
+                {expenses.length === 0 ? ( 
+                    <div className="text-center py-10 text-slate-400"><Wallet size={48} className="mx-auto mb-2 opacity-20" /><p>No expenses yet.</p></div> 
+                ) : ( 
+                    sortedDates.map(date => {
+                        const dailyExpenses = expensesByDate[date];
+                        const dailyTotalBase = dailyExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
+                        const dailyTotalDisplay = dailyTotalBase * (targetRate / baseRate);
+                        
+                        return (
+                            <div key={date} className="animate-in slide-in-from-bottom-2">
+                                <div className="flex justify-between items-end mb-3 px-2">
+                                    <h4 className="font-bold text-slate-500 text-sm uppercase tracking-wider">{date === 'Unscheduled' ? 'Other' : new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</h4>
+                                    <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(dailyTotalDisplay, targetCurrency)}</span>
+                                </div>
+                                <div className="space-y-3">
+                                    {dailyExpenses.map(e => (
+                                        <ExpenseCard key={e.id} expense={e} onDelete={handleDelete} isEditMode={isEditMode} currencyOptions={CURRENCY_OPTIONS} />
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
             </div>
+            
             <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="New Expense"><AddExpenseForm onAddExpense={handleAdd} currencyOptions={CURRENCY_OPTIONS} convertToBase={convertToBase} /></Modal>
         </div>
     );
 };
 
 // --- DASHBOARD VIEW (NEW) ---
-const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail }) => {
+const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                  <div className="flex justify-between items-center">
                     <Logo size="lg" />
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+                        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
                             <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                 <User size={14} />
                             </div>
@@ -460,6 +602,18 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
                         <button key={trip.id} onClick={() => onSelectTrip(trip.id)} className="relative group text-left h-48 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
                              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-10" />
                              <img src={trip.coverImage} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                             
+                             {/* DELETE BUTTON - ADDED & MOBILE OPTIMIZED (Always visible on mobile/edit mode) */}
+                             <div className="absolute top-3 right-3 z-30 opacity-100 transition-opacity">
+                                <div 
+                                    onClick={(e) => { e.stopPropagation(); onDeleteTrip(trip); }}
+                                    className="p-2 bg-black/40 hover:bg-red-600 text-white backdrop-blur-md rounded-full transition-colors shadow-lg cursor-pointer md:opacity-0 md:group-hover:opacity-100"
+                                    title="Delete Trip"
+                                >
+                                    <Trash2 size={16} />
+                                </div>
+                             </div>
+
                              <div className="absolute bottom-0 left-0 p-6 z-20 text-white">
                                  <h3 className="text-2xl font-black mb-1">{trip.title}</h3>
                                  <p className="text-sm opacity-90 font-medium flex items-center gap-1"><CalendarIcon size={14}/> {trip.startDate}</p>
@@ -500,6 +654,10 @@ export default function TravelApp() {
     const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
     const [imageEditState, setImageEditState] = useState(null); // { dayIdx, actId, url }
     const [sharedCode, setSharedCode] = useState(null);
+    
+    // NEW STATES
+    const [isDataLoaded, setIsDataLoaded] = useState(false); 
+    const [tripToDelete, setTripToDelete] = useState(null);
 
     // --- MANDATORY AUTH PATTERN & DATA FETCHING ---
     useEffect(() => {
@@ -515,10 +673,6 @@ export default function TravelApp() {
                     console.error("Custom token auth failed:", err);
                 }
             } 
-            
-            // NOTE: REMOVED AUTOMATIC ANONYMOUS SIGN IN
-            // This ensures users are forced to login page unless they have a session
-            // if (!signedIn) { await signInAnonymously(auth); }
         };
         initAuth();
 
@@ -537,8 +691,10 @@ export default function TravelApp() {
             setView('dashboard');
             setIsEditMode(false);
             setImageEditState(null);
+            setTripToDelete(null); // Clear delete modal
             // Trips will be cleared by the snapshot listener returning nothing or unmounting
             setTrips([]);
+            setIsDataLoaded(false);
         }
     }, [user]);
 
@@ -556,21 +712,26 @@ export default function TravelApp() {
                 // Initialize EMPTY trip list for new users (FIX FOR BUG #1 PART 2)
                 setDoc(getUserTripRef(user.uid), { allTrips: [], currentTripId: null });
             }
+            setIsDataLoaded(true); // Mark data as loaded to enable saves
         });
         return () => unsub();
     }, [user, view, currentTripId]);
 
     const saveTimeout = useRef(null);
     useEffect(() => {
-        if (!user || trips.length === 0) return;
+        // Updated guard to prevent saving empty state before data load
+        if (!user || !isDataLoaded) return;
+        
         clearTimeout(saveTimeout.current);
         saveTimeout.current = setTimeout(() => {
             setDoc(getUserTripRef(user.uid), { allTrips: trips, currentTripId }, { merge: true });
         }, 1000);
-    }, [trips, currentTripId, user]);
+    }, [trips, currentTripId, user, isDataLoaded]);
 
     const trip = trips.find(t => t.id === currentTripId);
-    const weatherData = useWeather(22.3193, 114.1694); // Mock coords for now
+    
+    // WEATHER LOGIC UPDATE: Use Trip Coordinates
+    const weatherData = useWeather(trip?.lat || 22.3193, trip?.lon || 114.1694);
 
     const updateTrip = (updates) => { setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); };
     
@@ -583,10 +744,21 @@ export default function TravelApp() {
             startDate: new Date().toISOString().split('T')[0], 
             coverImage: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2000&q=80',
             companions: [], 
+            lat: 22.3193, // Default HK
+            lon: 114.1694, // Default HK
             days: [{ id: 'd1', date: new Date().toISOString().split('T')[0], title: 'Day 1', activities: [] }] 
         };
         setTrips(prev => [...prev, newTrip]);
     };
+
+    const handleDeleteTripConfirm = async () => {
+        if (!tripToDelete) return;
+        const newTrips = trips.filter(t => t.id !== tripToDelete.id);
+        setTrips(newTrips);
+        setTripToDelete(null);
+        // Auto-save useEffect will handle the persistence
+    };
+
     const handleDeleteDay = (idx) => {
         if (trip.days.length <= 1) return alert("You must have at least one day.");
         if (confirm(`Delete Day ${idx + 1}?`)) {
@@ -689,6 +861,7 @@ export default function TravelApp() {
                     onSignOut={() => setShowSignOutConfirm(true)}
                     onImportTrip={() => setModalOpen('import')}
                     userEmail={user.email}
+                    onDeleteTrip={setTripToDelete}
                 />
                 
                 <Modal isOpen={showSignOutConfirm} onClose={() => setShowSignOutConfirm(false)} title="Sign Out">
@@ -708,9 +881,28 @@ export default function TravelApp() {
                             <h4 className="font-bold dark:text-white">Import a Friend's Trip</h4>
                             <p className="text-sm text-slate-500 mb-4">Enter the 6-character code to clone a shared itinerary.</p>
                             <form onSubmit={handleImportTrip} className="flex gap-2">
-                                <input name="shareId" placeholder="e.g. A7B2X9" className="flex-grow bg-white dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" required maxLength={6} />
+                                <input name="shareId" placeholder="e.g. A7B2X9" className="flex-grow bg-white dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" required maxLength={6} />
                                 <button type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-colors">Import</button>
                             </form>
+                        </div>
+                    </div>
+                </Modal>
+
+                <Modal isOpen={!!tripToDelete} onClose={() => setTripToDelete(null)} title="Delete Trip">
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl text-red-700 dark:text-red-300">
+                             <div className="p-3 bg-red-100 dark:bg-red-900/40 rounded-full"><AlertTriangle size={24} /></div>
+                             <div>
+                                 <h4 className="font-bold">Are you sure?</h4>
+                                 <p className="text-xs opacity-90">This action cannot be undone.</p>
+                             </div>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-300 text-sm">
+                            You are about to delete <strong>{tripToDelete?.title}</strong>. All itinerary data and expenses will be lost permanently.
+                        </p>
+                        <div className="flex gap-3 justify-end pt-2">
+                            <button onClick={() => setTripToDelete(null)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancel</button>
+                            <button onClick={handleDeleteTripConfirm} className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30">Delete Forever</button>
                         </div>
                     </div>
                 </Modal>
@@ -719,6 +911,13 @@ export default function TravelApp() {
     }
 
     const activeDay = trip.days[activeDayIdx] || trip.days[0];
+
+    // Prepare options for Settings CustomSelect
+    const countryOptions = COUNTRY_DATA.map(c => ({
+        value: c.name,
+        label: c.name,
+        icon: getFlagUrl(c.countryCode)
+    }));
 
     return (
         <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-20`}>
@@ -780,7 +979,7 @@ export default function TravelApp() {
 
             {/* --- MAIN CONTENT --- */}
             {viewMode === 'budget' ? (
-                <BudgetView currentUser={user} isEditMode={isEditMode} db={db} />
+                <BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} />
             ) : (
                 <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30">
                     
@@ -841,7 +1040,25 @@ export default function TravelApp() {
                                 <div key={act.id} className={`relative md:grid md:grid-cols-[140px_1fr] gap-6 group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
                                     <div className="hidden md:flex flex-col items-end pt-5 pr-4 text-right">
                                         <span className="font-extrabold text-zinc-800 dark:text-white text-sm leading-tight">{act.time}</span>
-                                        <div className={`mt-2 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)}`}>{getTypeIcon(act.type)} {act.type}</div>
+                                        
+                                        {/* EDITABLE ACTIVITY TYPE ICON/LABEL */}
+                                        <div className="mt-2 relative">
+                                            {isEditMode ? (
+                                                <select 
+                                                    value={act.type} 
+                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'type', e.target.value)} 
+                                                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)} appearance-none cursor-pointer outline-none focus:ring-2 ring-indigo-500`}
+                                                >
+                                                    {CATEGORY_ICONS.map(cat => (
+                                                        <option key={cat.id} value={cat.id}>{cat.label}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)}`}>
+                                                    {getTypeIcon(act.type)} {act.type}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     
                                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300">
@@ -851,9 +1068,12 @@ export default function TravelApp() {
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent sm:hidden"></div>
                                                 <div className="absolute bottom-3 left-3 text-white font-bold sm:hidden text-lg drop-shadow-md">{act.time}</div>
                                                 
-                                                {/* FIXED: Photo Update Logic with Modal */}
+                                                {/* MOBILE FIX: Camera is ALWAYS visible in Edit Mode, no hover required */}
                                                 {isEditMode && (
-                                                    <button onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-black/70 shadow-lg cursor-pointer z-20">
+                                                    <button 
+                                                        onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} 
+                                                        className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full backdrop-blur-md transition-opacity hover:bg-black/70 shadow-lg cursor-pointer z-20 md:opacity-0 md:group-hover/img:opacity-100"
+                                                    >
                                                         <Camera size={16} />
                                                     </button>
                                                 )}
@@ -866,13 +1086,23 @@ export default function TravelApp() {
                                                         <button onClick={() => setEmbeddedMaps(prev => ({...prev, [act.id]: !prev[act.id]}))} className={`transition-colors p-1 rounded-full ${embeddedMaps[act.id] ? 'bg-indigo-100 text-indigo-600' : 'text-slate-300 hover:text-indigo-600'}`} title="Toggle Map"><MapPin size={18} /></button>
                                                     )}
                                                 </div>
-                                                <div className="flex-grow">
+                                                <div className="flex-grow space-y-2">
                                                     {isEditMode ? (
-                                                        <input value={act.title} onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'title', e.target.value)} className="w-full font-bold text-lg text-zinc-900 dark:text-white bg-transparent border-b border-slate-200 mb-1 focus:outline-none"/>
+                                                        <>
+                                                            <input value={act.title} onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'title', e.target.value)} className="w-full font-bold text-lg text-zinc-900 dark:text-white bg-transparent border-b border-slate-200 mb-1 focus:outline-none placeholder-slate-400" placeholder="Activity Title"/>
+                                                            <textarea 
+                                                                value={act.desc} 
+                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'desc', e.target.value)} 
+                                                                className="w-full text-xs text-zinc-500 dark:text-slate-400 bg-transparent border border-dashed border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none h-16"
+                                                                placeholder="Short description..."
+                                                            />
+                                                        </>
                                                     ) : (
-                                                        <h3 className="font-bold text-lg text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-600 transition-colors truncate">{act.title}</h3>
+                                                        <>
+                                                            <h3 className="font-bold text-lg text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-600 transition-colors truncate">{act.title}</h3>
+                                                            <p className="text-xs text-zinc-500 dark:text-slate-400 line-clamp-2">{act.desc}</p>
+                                                        </>
                                                     )}
-                                                    <p className="text-xs text-zinc-500 dark:text-slate-400 line-clamp-2">{act.desc}</p>
                                                 </div>
                                                 
                                                 <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -880,17 +1110,45 @@ export default function TravelApp() {
                                                         <summary className="list-none flex items-center justify-between w-full cursor-pointer text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider">
                                                             <span className="flex items-center gap-1">Details <ChevronRight size={12} className="group-open/details:rotate-90 transition-transform" /></span>
                                                             <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-                                                                <DollarSign size={12} />
                                                                 {isEditMode ? (
-                                                                    <input type="number" placeholder="Cost" className="w-16 bg-slate-50 dark:bg-slate-800 rounded px-1 py-0.5 outline-none" value={act.cost || ''} onChange={(e) => updateActivityCost(activeDayIdx, act.id, e.target.value)} onClick={e => e.preventDefault()} />
+                                                                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded p-0.5">
+                                                                        {/* CURRENCY SELECTOR */}
+                                                                        <select 
+                                                                            value={act.currency || 'USD'} 
+                                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'currency', e.target.value)}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            className="bg-transparent text-[10px] font-bold border-none outline-none cursor-pointer w-12"
+                                                                        >
+                                                                            {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                                                        </select>
+                                                                        <input 
+                                                                            type="number" 
+                                                                            placeholder="0" 
+                                                                            className="w-12 bg-transparent outline-none text-right font-mono" 
+                                                                            value={act.cost || ''} 
+                                                                            onChange={(e) => updateActivityCost(activeDayIdx, act.id, e.target.value)} 
+                                                                            onClick={e => e.preventDefault()} 
+                                                                        />
+                                                                    </div>
                                                                 ) : (
-                                                                    <span>{act.cost || 0}</span>
+                                                                    <span>{act.currency || '$'} {act.cost || 0}</span>
                                                                 )}
                                                             </div>
                                                         </summary>
+                                                        
                                                         <div className="pt-2 text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">
-                                                            {act.details}
+                                                            {isEditMode ? (
+                                                                <textarea 
+                                                                    value={act.details} 
+                                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)}
+                                                                    className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs focus:ring-2 focus:ring-indigo-500 outline-none resize-y"
+                                                                    placeholder="Add detailed notes, links, or reservations here..."
+                                                                />
+                                                            ) : (
+                                                                act.details
+                                                            )}
                                                         </div>
+                                                        
                                                         {embeddedMaps[act.id] && (
                                                             <div className="h-48 mt-3 rounded-lg overflow-hidden bg-slate-100">
                                                                 <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(act.title)}&t=&z=15&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
@@ -905,7 +1163,7 @@ export default function TravelApp() {
                              ))}
                              
                              {isEditMode && (
-                                <button onClick={() => { const newDays = [...trip.days]; newDays[activeDayIdx].activities.push({ id: Math.random().toString(36), time: '12:00', title: 'New Activity', type: 'attraction', desc: 'Description', image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80' }); updateTrip({ days: newDays }); }} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all gap-2">
+                                <button onClick={() => { const newDays = [...trip.days]; newDays[activeDayIdx].activities.push({ id: Math.random().toString(36), time: '12:00', title: 'New Activity', type: 'attraction', desc: 'Description', image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80', currency: 'USD' }); updateTrip({ days: newDays }); }} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all gap-2">
                                     <Plus size={24} /> <span className="font-bold">Add Activity</span>
                                 </button>
                              )}
@@ -915,6 +1173,7 @@ export default function TravelApp() {
             )}
 
             <Modal isOpen={modalOpen === 'share'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Share Trip">
+                {/* ... existing share modal code ... */}
                 <div className="space-y-6">
                     {sharedCode ? (
                         <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
@@ -955,9 +1214,42 @@ export default function TravelApp() {
                 </div>
             </Modal>
              <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
+                {/* ... existing settings modal code ... */}
                 <div className="space-y-6">
                     <section className="space-y-4">
-                         <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trip Name</label><input type="text" value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold"/></div>
+                        {/* Title Input */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trip Name</label>
+                            <input type="text" value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold"/>
+                        </div>
+                        
+                        {/* Weather Location Selector with Images */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Globe size={12}/> Weather Location</label>
+                            <CustomIconSelect
+                                options={countryOptions}
+                                value={COUNTRY_DATA.find(c => Math.abs(c.lat - (trip.lat || 0)) < 0.1 && Math.abs(c.lon - (trip.lon || 0)) < 0.1)?.name}
+                                onChange={(val) => {
+                                    const selected = COUNTRY_DATA.find(c => c.name === val);
+                                    if(selected) updateTrip({ lat: selected.lat, lon: selected.lon });
+                                }}
+                                placeholder="Select a location..."
+                                renderValue={(opt) => (
+                                    <div className="flex items-center gap-2">
+                                        <img src={opt.icon} alt="" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
+                                        <span className="font-medium text-sm">{opt.label}</span>
+                                    </div>
+                                )}
+                                renderOption={(opt) => (
+                                    <div className="flex items-center gap-3">
+                                        <img src={opt.icon} alt="" className="w-6 h-4 object-cover rounded-sm shadow-sm" />
+                                        <span className="font-medium text-sm">{opt.label}</span>
+                                    </div>
+                                )}
+                            />
+                            <p className="text-[10px] text-slate-400">Updates weather forecasts. Coordinates: {trip.lat?.toFixed(2)}, {trip.lon?.toFixed(2)}</p>
+                        </div>
+
                         <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label><input type="text" value={trip.coverImage} onChange={(e) => updateTrip({ coverImage: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm"/></div>
                          <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label><input type="date" value={trip.startDate} onChange={(e) => updateTrip({ startDate: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
                         <div className="space-y-2"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label><div className="flex flex-wrap gap-2">{trip.companions.map((c, i) => (<span key={i} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm flex items-center gap-1 group">{c}<button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500"><X size={12} /></button></span>))}</div><form onSubmit={(e) => { e.preventDefault(); if (e.target.name.value) { updateTrip({ companions: [...trip.companions, e.target.name.value] }); e.target.name.value = ''; } }} className="flex gap-2"><input name="name" placeholder="Add person..." className="flex-grow bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /><button type="submit" className="bg-indigo-600 text-white px-4 rounded-xl text-sm font-bold">Add</button></form></div>
