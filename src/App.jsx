@@ -166,8 +166,8 @@ const WeatherDisplay = ({ date, weatherData }) => {
     );
 };
 
-// --- DATA: FULL ITINERARY ---
-const HK_MACAU_2026 = {
+// --- DATA: TEMPLATE ONLY (NOT DEFAULT FOR NEW USERS) ---
+const HK_MACAU_TEMPLATE = {
   id: 'hk_macau_2026',
   title: 'Hong Kong & Macau 2026',
   startDate: '2026-01-15',
@@ -181,81 +181,6 @@ const HK_MACAU_2026 = {
         { id: 'd1_a2', time: '07:10 - 09:45', title: 'Flight to Hong Kong', type: 'travel', desc: 'Flight duration approx 2.5 hours.', details: '', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80' },
         { id: 'd1_a3', time: '10:00 - 11:00', title: 'Arrival HKIA & Transfer', type: 'travel', desc: 'Transfer to Novotel Citygate.', details: 'Free hotel shuttle (~5 min) or taxi. Check-in and freshen up.', image: 'https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?auto=format&fit=crop&w=600&q=80' },
         { id: 'd1_a4', time: '11:00 - 12:30', title: 'Citygate Outlets & Lunch', type: 'shopping', desc: 'Outlet shopping and lunch.', details: 'Food Opera (Asian favorites) or Oolaa Tung Chung (Western).', image: 'https://images.unsplash.com/photo-1558981408-db0ecd8a1ee4?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd1_a5', time: '12:30 - 13:00', title: 'Walk to Ngong Ping 360', type: 'travel', desc: '5-minute walk from hotel.', details: 'Buy tickets online (web.hkha.org) in advance.', image: 'https://images.unsplash.com/photo-1536526189568-d05540a92562?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd1_a6', time: '13:00 - 17:30', title: 'Ngong Ping 360 & Big Buddha', type: 'attraction', desc: 'Cable car ride, Village, Monastery.', details: 'Climb steps to Tian Tan Buddha. Visit Wisdom Path. Allow 3-4 hours.', image: 'https://images.unsplash.com/photo-1512753360482-169822a101b4?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd1_a7', time: '17:30 - 18:30', title: 'Return to Tung Chung', type: 'travel', desc: 'Cable car or Bus 23.', details: 'Bus 23 takes ~47 min if queues are long.', image: 'https://images.unsplash.com/photo-1597652390890-21a4f00b1a0e?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd1_a8', time: '19:00 - 20:30', title: 'Dinner at T-Bay', type: 'food', desc: 'Sunset Grill or Yue.', details: 'Walking distance. Sunset Grill for steaks, Yue for Cantonese.', image: 'https://images.unsplash.com/photo-1550966871-3ed3c47e2ce2?auto=format&fit=crop&w=600&q=80' },
-      ]
-    },
-    {
-      id: 'd2', date: '2026-01-16', title: 'Day 2: Hong Kong Disneyland', summary: 'A full magical day at Disney.',
-      activities: [
-        { id: 'd2_a1', time: '07:30 - 08:30', title: 'Breakfast', type: 'food', desc: 'Hotel or Citygate.', details: 'Fuel up early.', image: 'https://images.unsplash.com/photo-1533089862017-ec936d7734a6?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd2_a2', time: '08:30 - 09:00', title: 'Travel to Disneyland', type: 'travel', desc: 'MTR to Sunny Bay -> Disneyland Resort.', details: '~20 min. Mickey themed trains!', image: 'https://images.unsplash.com/photo-1548281035-29b61d334508?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd2_a3', time: '09:00 - 10:00', title: 'Arrive & Entry', type: 'travel', desc: 'Reserve tickets online.', details: 'Use app for wait times. Opens ~10:00/10:30 AM.', image: 'https://images.unsplash.com/photo-1628153488836-82285514f260?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd2_a4', time: '10:00 - 19:30', title: 'Hong Kong Disneyland', type: 'attraction', desc: '8 lands including World of Frozen.', details: 'Lunch at Royal Banquet Hall. Watch Momentous Nighttime Spectacular.', image: 'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd2_a5', time: '19:30 - 20:00', title: 'Return to Tung Chung', type: 'travel', desc: 'MTR reverse route.', details: '', image: 'https://images.unsplash.com/photo-1540304381283-a75d1d6a2491?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd2_a6', time: '20:00 - 21:30', title: 'Dinner at Citygate', type: 'food', desc: 'Shake Shack or Hidden Heat.', details: 'Exclusive Tung Chung dessert at Shake Shack.', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80' },
-      ]
-    },
-    {
-      id: 'd3', date: '2026-01-17', title: 'Day 3: The Peak & Central', summary: 'Victoria Peak views, Central heritage, and Night Market.',
-      activities: [
-        { id: 'd3_a1', time: '08:00 - 09:00', title: 'Breakfast', type: 'food', desc: 'Hotel buffet or Cupping Room.', details: '', image: 'https://images.unsplash.com/photo-1496116218417-1a781b1cdd23?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd3_a2', time: '09:00 - 10:00', title: 'Travel to Central', type: 'travel', desc: 'MTR Tung Chung to HK Station.', details: '~28 min. Walk to Peak Tram.', image: 'https://images.unsplash.com/photo-1572979203799-733355209355?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd3_a3', time: '10:00 - 13:00', title: 'Victoria Peak', type: 'attraction', desc: 'Peak Tram & Sky Terrace 428.', details: 'Harbour views. Peak Galleria. Morning Trail.', image: 'https://images.unsplash.com/photo-1599988226955-e7f607c7442a?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd3_a4', time: '13:00 - 14:30', title: 'Dim Sum Lunch', type: 'food', desc: 'Tim Ho Wan or Lin Heung.', details: 'BBQ pork buns at Tim Ho Wan (Central).', image: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd3_a5', time: '14:30 - 17:00', title: 'Central & Sheung Wan', type: 'attraction', desc: 'Hollywood Road, Man Mo Temple.', details: 'Visit PMQ creative hub.', image: 'https://images.unsplash.com/photo-1569766956636-66f6df643c72?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd3_a6', time: '17:00 - 18:30', title: 'Star Ferry to TST', type: 'travel', desc: 'Scenic harbour crossing.', details: 'Walk Avenue of Stars.', image: 'https://images.unsplash.com/photo-1552656967-7a099074b62d?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd3_a7', time: '18:30 - 21:00', title: 'Temple Street Night Market', type: 'shopping', desc: 'Souvenirs, street food.', details: 'Walk from Jordan. Claypot rice dinner.', image: 'https://images.unsplash.com/photo-1574227492706-f65b24c3688a?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd3_a8', time: '21:00 - 21:30', title: 'Return to Hotel', type: 'travel', desc: 'MTR Jordan to Tung Chung.', details: '', image: 'https://images.unsplash.com/photo-1536526189568-d05540a92562?auto=format&fit=crop&w=600&q=80' },
-      ]
-    },
-    {
-      id: 'd4', date: '2026-01-18', title: 'Day 4: Mong Kok & Kowloon', summary: 'Markets, Museums, and Culture.',
-      activities: [
-        { id: 'd4_a1', time: '08:00 - 09:00', title: 'Breakfast', type: 'food', desc: 'Hotel or local favorite.', details: '', image: 'https://images.unsplash.com/photo-1533089862017-ec936d7734a6?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd4_a2', time: '09:00 - 12:00', title: 'Ladies\' Market (Mong Kok)', type: 'shopping', desc: 'Clothes, bags, street food.', details: 'Tung Choi Street. Visit Sneaker Street. Bargain hard!', image: 'https://images.unsplash.com/photo-1533965936850-939fc964344a?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd4_a3', time: '12:00 - 13:30', title: 'Lunch: Mott 32 or Yum Cha', type: 'food', desc: 'Upscale or playful dim sum.', details: 'Mott 32 for premium. Yum Cha for pig-shaped buns.', image: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd4_a4', time: '13:30 - 16:00', title: 'Kowloon Museums', type: 'attraction', desc: 'History/Science Museum or M+.', details: 'M+ is at West Kowloon Cultural District.', image: 'https://images.unsplash.com/photo-1558234674-8b63e2621746?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd4_a5', time: '16:00 - 18:00', type: 'shopping', title: 'Return & Shopping', desc: 'Citygate Outlets last-minute.', details: '', image: 'https://images.unsplash.com/photo-1558981408-db0ecd8a1ee4?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd4_a6', time: '18:00 - 20:00', title: 'Dinner', type: 'food', desc: 'My Thai or Maison du Mezze.', details: '', image: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=600&q=80' },
-      ]
-    },
-    {
-      id: 'd5', date: '2026-01-19', title: 'Day 5: Macau Historic Centre', summary: 'Ruins of St. Paul\'s and Portuguese Heritage.',
-      activities: [
-        { id: 'd5_a1', time: '06:30 - 08:00', title: 'Breakfast & Docs', type: 'food', desc: 'Prepare passports.', details: 'Macau requires immigration.', image: 'https://images.unsplash.com/photo-1518331539958-9a2963167193?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a2', time: '08:00 - 08:45', title: 'Travel to HZMB Port', type: 'travel', desc: 'Bus B5/901 from Tung Chung.', details: '~45 min transit.', image: 'https://images.unsplash.com/photo-1628522303038-d6556e87a2d3?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a3', time: '08:45 - 10:00', title: 'Crossing to Macau', type: 'travel', desc: 'HZMB Shuttle Bus.', details: 'Takes ~35 min. Ticket ~HK$65.', image: 'https://images.unsplash.com/photo-1543731068-1541f4d85603?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a4', time: '10:00 - 10:30', title: 'Arrival & Transport', type: 'travel', desc: 'Bus 101X/102X or Taxi.', details: 'Head to historic centre.', image: 'https://images.unsplash.com/photo-1556624513-568eb5b62db1?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a5', time: '10:30 - 13:00', title: 'Senado Square & St. Paul\'s', type: 'attraction', desc: 'Colonial buildings, Ruins.', details: 'Walk up 68 stone steps. Explore Mount Fortress.', image: 'https://images.unsplash.com/photo-1599831773735-6c73950ba33f?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a6', time: '13:00 - 14:30', title: 'Lunch at Riquexó', type: 'food', desc: 'Try Minchi (national dish).', details: 'One of the oldest Macanese eateries.', image: 'https://images.unsplash.com/photo-1512401880482-169822a101b4?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a7', time: '14:30 - 16:30', title: 'A-Ma Temple', type: 'attraction', desc: 'Oldest temple in Macau.', details: 'Visit Moorish Barracks.', image: 'https://images.unsplash.com/photo-1558611100-36d2626e2798?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a8', time: '16:30 - 18:00', title: 'Snack: Egg Tarts', type: 'food', desc: 'Lord Stow\'s or Margaret\'s.', details: 'Walk along Rua do Almirante Sérgio.', image: 'https://images.unsplash.com/photo-1589301760574-0a6a9787e799?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a9', time: '18:00 - 19:30', title: 'Dinner at A Lorcha', type: 'food', desc: 'Portuguese cuisine.', details: 'Clams Bulhão Pato and Dobradinha.', image: 'https://images.unsplash.com/photo-1595295330654-29947d6dd6d5?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd5_a10', time: '19:30 - 21:00', title: 'Return to Hong Kong', type: 'travel', desc: 'Shuttle bus back via HZMB.', details: '', image: 'https://images.unsplash.com/photo-1624362145327-142436f52230?auto=format&fit=crop&w=600&q=80' },
-      ]
-    },
-    {
-      id: 'd6', date: '2026-01-20', title: 'Day 6: Macau Cotai & Taipa', summary: 'Macau Tower, Taipa Village, and Casinos.',
-      activities: [
-        { id: 'd6_a1', time: '07:00 - 08:30', type: 'travel', title: 'Breakfast & Travel', desc: 'Repeat bridge crossing to Macau.', details: '', image: 'https://images.unsplash.com/photo-1628522303038-d6556e87a2d3?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd6_a2', time: '08:30 - 10:00', type: 'attraction', title: 'Macau Tower', desc: '338m high tower.', details: 'Observation deck views.', image: 'https://images.unsplash.com/photo-1577943260714-a95574384042?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd6_a3', time: '10:00 - 13:00', type: 'attraction', title: 'Taipa Village', desc: 'Colorful houses, Taipa Houses.', details: 'Pork chop buns at Tai Lei Loi Kei.', image: 'https://images.unsplash.com/photo-1573033501170-13d81b4f2c08?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd6_a4', time: '13:00 - 14:30', type: 'food', title: 'Lunch: Macanese', desc: 'La Famiglia or Sab 8 Café.', details: 'Minchi and other local dishes.', image: 'https://images.unsplash.com/photo-1563507466359-1e285890832d?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd6_a5', time: '14:30 - 17:00', type: 'shopping', title: 'Cotai Strip & Casinos', desc: 'Venetian, Parisian, City of Dreams.', details: 'Gondola rides, Eiffel Tower replica.', image: 'https://images.unsplash.com/photo-1623847844052-1c251d184043?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd6_a6', time: '17:00 - 19:00', type: 'food', title: 'Dinner', desc: 'Macau Tower 360 Café or Cotai.', details: 'Revolving buffet or resort dining.', image: 'https://images.unsplash.com/photo-1550966871-3ed3c47e2ce2?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd6_a7', time: '19:00 - 21:00', type: 'travel', title: 'Return to Hong Kong', desc: 'Shuttle bus back via HZMB.', details: '', image: 'https://images.unsplash.com/photo-1624362145327-142436f52230?auto=format&fit=crop&w=600&q=80' },
-      ]
-    },
-    {
-      id: 'd7', date: '2026-01-21', title: 'Day 7: Departure', summary: 'Last minute shopping and flight home.',
-      activities: [
-        { id: 'd7_a1', time: '08:00 - 10:00', type: 'food', title: 'Breakfast & Pack', desc: 'Check out of Novotel Citygate.', details: 'Leave luggage at concierge.', image: 'https://images.unsplash.com/photo-1528696892704-5e1122852276?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd7_a2', time: '10:00 - 13:00', type: 'shopping', title: 'Citygate Outlets', desc: 'Final shopping or promenade.', details: 'Lunch at The Next Chapter.', image: 'https://images.unsplash.com/photo-1555529733-0e670560f7e1?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd7_a3', time: '13:00 - 15:00', type: 'travel', title: 'Transfer to Airport', desc: 'Hotel shuttle or taxi to HKIA.', details: 'Duty free shopping.', image: 'https://images.unsplash.com/photo-1569336415962-a4bd9f69cd83?auto=format&fit=crop&w=600&q=80' },
-        { id: 'd7_a4', time: '19:15 - 21:40', type: 'travel', title: 'Flight to Manila', desc: 'Flight back home.', details: 'Arrive 21:40.', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=600&q=80' },
       ]
     }
   ]
@@ -511,20 +436,26 @@ const BudgetView = ({ currentUser, isEditMode, db }) => {
 };
 
 // --- DASHBOARD VIEW (NEW) ---
-const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut }) => {
+const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                  <div className="flex justify-between items-center">
                     <Logo size="lg" />
-                    <button onClick={onSignOut} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"><LogOut size={20} /></button>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+                            <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <User size={14} />
+                            </div>
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 max-w-[100px] truncate">
+                                {userEmail || 'Guest'}
+                            </span>
+                        </div>
+                        <button onClick={onSignOut} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"><LogOut size={20} /></button>
+                    </div>
                  </div>
 
                  <div className="grid md:grid-cols-2 gap-6">
-                    <button onClick={onNewTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all group">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Plus size={24} /></div>
-                        <span className="font-bold">Plan New Trip</span>
-                    </button>
                     {trips.map(trip => (
                         <button key={trip.id} onClick={() => onSelectTrip(trip.id)} className="relative group text-left h-48 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
                              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-10" />
@@ -535,6 +466,16 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut }) => {
                              </div>
                         </button>
                     ))}
+
+                    <button onClick={onNewTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all group">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Plus size={24} /></div>
+                        <span className="font-bold">Plan New Trip</span>
+                    </button>
+
+                     <button onClick={onImportTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Download size={24} /></div>
+                        <span className="font-bold">Import Trip</span>
+                    </button>
                  </div>
             </div>
         </div>
@@ -575,10 +516,9 @@ export default function TravelApp() {
                 }
             } 
             
-            // Fallback: If custom token wasn't attempted or failed, sign in anonymously.
-            if (!signedIn) {
-                 await signInAnonymously(auth);
-            }
+            // NOTE: REMOVED AUTOMATIC ANONYMOUS SIGN IN
+            // This ensures users are forced to login page unless they have a session
+            // if (!signedIn) { await signInAnonymously(auth); }
         };
         initAuth();
 
@@ -588,6 +528,19 @@ export default function TravelApp() {
         }); 
         return () => unsub(); 
     }, []);
+
+    // RESET STATE ON LOGOUT/USER CHANGE TO PREVENT UI LEAKS (FIX FOR BUG #1)
+    useEffect(() => {
+        if (!user) {
+            setShowSignOutConfirm(false);
+            setModalOpen(null);
+            setView('dashboard');
+            setIsEditMode(false);
+            setImageEditState(null);
+            // Trips will be cleared by the snapshot listener returning nothing or unmounting
+            setTrips([]);
+        }
+    }, [user]);
 
     useEffect(() => {
         if (!user) return;
@@ -600,9 +553,8 @@ export default function TravelApp() {
                    setView('dashboard');
                 }
             } else {
-                // Initialize default trip
-                const defaultTrip = { ...HK_MACAU_2026 };
-                setDoc(getUserTripRef(user.uid), { allTrips: [defaultTrip], currentTripId: HK_MACAU_2026.id });
+                // Initialize EMPTY trip list for new users (FIX FOR BUG #1 PART 2)
+                setDoc(getUserTripRef(user.uid), { allTrips: [], currentTripId: null });
             }
         });
         return () => unsub();
@@ -641,6 +593,15 @@ export default function TravelApp() {
             const newDays = trip.days.filter((_, i) => i !== idx);
             updateTrip({ days: newDays });
             if (activeDayIdx >= newDays.length) setActiveDayIdx(newDays.length - 1);
+        }
+    };
+
+    const handleSignOut = async () => {
+        setShowSignOutConfirm(false); // Close modal first
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error("Error signing out:", error);
         }
     };
     
@@ -721,13 +682,35 @@ export default function TravelApp() {
     if (view === 'dashboard' || !trip) {
         return (
             <>
-                <DashboardView trips={trips} onSelectTrip={handleSelectTrip} onNewTrip={handleNewTrip} onSignOut={() => setShowSignOutConfirm(true)} />
+                <DashboardView 
+                    trips={trips} 
+                    onSelectTrip={handleSelectTrip} 
+                    onNewTrip={handleNewTrip} 
+                    onSignOut={() => setShowSignOutConfirm(true)}
+                    onImportTrip={() => setModalOpen('import')}
+                    userEmail={user.email}
+                />
+                
                 <Modal isOpen={showSignOutConfirm} onClose={() => setShowSignOutConfirm(false)} title="Sign Out">
                     <div className="space-y-4">
                         <p className="text-slate-600 dark:text-slate-300">Are you sure you want to sign out?</p>
                         <div className="flex gap-3 justify-end">
                             <button onClick={() => setShowSignOutConfirm(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">Cancel</button>
-                            <button onClick={() => signOut(auth)} className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold">Sign Out</button>
+                            <button onClick={handleSignOut} className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold">Sign Out</button>
+                        </div>
+                    </div>
+                </Modal>
+
+                <Modal isOpen={modalOpen === 'import'} onClose={() => setModalOpen(null)} title="Import Trip">
+                    <div className="space-y-6">
+                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-center">
+                            <div className="mx-auto w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3"><Download size={24} /></div>
+                            <h4 className="font-bold dark:text-white">Import a Friend's Trip</h4>
+                            <p className="text-sm text-slate-500 mb-4">Enter the 6-character code to clone a shared itinerary.</p>
+                            <form onSubmit={handleImportTrip} className="flex gap-2">
+                                <input name="shareId" placeholder="e.g. A7B2X9" className="flex-grow bg-white dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all" required maxLength={6} />
+                                <button type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-colors">Import</button>
+                            </form>
                         </div>
                     </div>
                 </Modal>
@@ -750,6 +733,14 @@ export default function TravelApp() {
                 <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
                       <Logo size="sm" onClick={() => setView('dashboard')} />
                       <div className="flex gap-2">
+                        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/30 backdrop-blur-md rounded-full border border-white/10 mr-2">
+                            <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                                <User size={12} className="text-white" />
+                            </div>
+                            <span className="text-[10px] font-bold text-white max-w-[100px] truncate">
+                                {user.email || 'Guest'}
+                            </span>
+                        </div>
                         {isEditMode && <button onClick={() => setModalOpen('share')} className="p-2.5 bg-indigo-600 rounded-full hover:bg-indigo-700 shadow-lg"><Share2 size={18} /></button>}
                         <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`}>{isEditMode ? <Unlock size={18} /> : <Lock size={18} />}</button>
                         <button onClick={() => setViewMode(viewMode === 'budget' ? 'timeline' : 'budget')} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${viewMode === 'budget' ? 'bg-emerald-500 text-white' : 'bg-black/30 border-white/20'}`}><DollarSign size={18} /></button>
