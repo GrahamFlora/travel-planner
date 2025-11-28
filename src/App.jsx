@@ -1235,39 +1235,37 @@ export default function TravelApp() {
                         </div>
 
                         {/* Activity Cards with Visual Timeline - DARKENED BORDER */}
-                        <div className="relative border-l-2 border-slate-300 dark:border-slate-700 ml-6 md:ml-40 space-y-8 pl-8 md:pl-10 pb-4">
+                        <div className="relative border-l-2 border-slate-300 dark:border-slate-700 ml-3 md:ml-40 space-y-8 pl-6 md:pl-10 pb-4">
                              {activeDay.activities.map((act, idx) => (
                                 <div key={act.id} className={`relative group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
                                     
-                                    {/* TIMELINE DOT */}
-                                    <div className="absolute top-5 -left-10 md:-left-12 w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-zinc-100 dark:ring-slate-950 z-10 shadow-sm"></div>
+                                    {/* TIMELINE DOT - Centered on the border line */}
+                                    <div className="absolute top-6 -left-[1.6rem] md:-left-[2.1rem] w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-zinc-100 dark:ring-slate-950 z-10 shadow-sm"></div>
 
-                                    {/* TIME COLUMN (Desktop: LEFT SIDE, Mobile: HIDDEN) */}
-                                    <div className="hidden md:flex flex-col items-end absolute -left-40 top-5 w-32 text-right pr-4">
-                                        {/* EDITABLE TIME */}
-                                        {isEditMode ? (
-                                             <input 
-                                                type="text" 
-                                                value={act.time} 
-                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'time', e.target.value)}
-                                                className="font-extrabold text-zinc-800 dark:text-white text-sm leading-tight bg-transparent border-b border-slate-300 outline-none w-full text-right"
-                                                placeholder="09:00"
-                                            />
-                                        ) : (
-                                            <span className="font-extrabold text-zinc-800 dark:text-white text-sm leading-tight">{act.time}</span>
-                                        )}
-                                    </div>
-                                    
                                     {/* CARD CONTENT */}
                                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300 w-full">
                                         <div className="flex flex-col sm:flex-row h-full">
-                                            <div className="relative w-full h-40 sm:w-40 sm:h-auto flex-shrink-0 bg-slate-200 group/img">
+                                            
+                                            {/* IMAGE SECTION & TIME DISPLAY */}
+                                            <div className="relative w-full h-48 sm:w-48 sm:h-auto flex-shrink-0 bg-slate-200 group/img">
                                                 <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent sm:hidden"></div>
-                                                {/* Mobile-only time display inside image */}
-                                                <div className="absolute bottom-3 left-3 text-white font-bold sm:hidden text-lg drop-shadow-md md:hidden">{act.time}</div>
                                                 
-                                                {/* MOBILE FIX: Camera is ALWAYS visible in Edit Mode */}
+                                                {/* TIME DISPLAY - INSIDE PICTURE (BOTTOM) */}
+                                                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-end justify-between">
+                                                    {isEditMode ? (
+                                                        <input 
+                                                            type="text" 
+                                                            value={act.time} 
+                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'time', e.target.value)}
+                                                            className="font-black text-white text-xl leading-none bg-transparent border-b border-white/50 outline-none w-24 focus:border-indigo-400"
+                                                            placeholder="09:00"
+                                                        />
+                                                    ) : (
+                                                        <span className="font-black text-white text-xl leading-none drop-shadow-md tracking-tight">{act.time}</span>
+                                                    )}
+                                                </div>
+
+                                                {/* EDIT MODE CAMERA BUTTON */}
                                                 {isEditMode && (
                                                     <button 
                                                         onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} 
@@ -1277,6 +1275,7 @@ export default function TravelApp() {
                                                     </button>
                                                 )}
                                             </div>
+
                                             <div className="p-4 flex flex-col flex-grow relative min-w-0">
                                                 
                                                 {/* MAP ICON TO TOP RIGHT ABSOLUTE POSITION */}
@@ -1301,7 +1300,7 @@ export default function TravelApp() {
                                                     )}
                                                 </div>
 
-                                                <div className="flex-grow space-y-2 pr-12">
+                                                <div className="flex-grow space-y-2 pr-10">
                                                     
                                                      {/* 1. TYPE ICON (Now at top left) */}
                                                     <div className="mb-2">
