@@ -1585,11 +1585,28 @@ export default function TravelApp() {
              <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
                 {/* ... existing settings modal code ... */}
                 <div className="space-y-6">
+                    
+                    {/* DARK MODE TOGGLE (Moved to Top) */}
+                    <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-transparent dark:border-slate-700">
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                            {isDarkMode ? <Moon size={18} className="text-indigo-400"/> : <Sun size={18} className="text-amber-500"/>} 
+                            App Theme
+                        </span>
+                        <button 
+                            onClick={() => setIsDarkMode(!isDarkMode)} 
+                            className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                        >
+                            <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
+
                     <section className="space-y-4">
                         {/* Title Input */}
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trip Name</label>
-                            <input type="text" value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold"/>
+                            <input type="text" value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold dark:text-white"/>
                             <p className="text-[10px] text-slate-400">Pro tip: Type a country like "Trip to Japan" to auto-update cover photo.</p>
                         </div>
                         
@@ -1620,20 +1637,20 @@ export default function TravelApp() {
                             <p className="text-[10px] text-slate-400">Updates weather forecasts. Coordinates: {trip.lat?.toFixed(2)}, {trip.lon?.toFixed(2)}</p>
                         </div>
 
-                        <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label><input type="text" value={trip.coverImage} onChange={(e) => updateTrip({ coverImage: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm"/></div>
-                         <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label><input type="date" value={trip.startDate} onChange={(e) => updateTrip({ startDate: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
+                        <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label><input type="text" value={trip.coverImage} onChange={(e) => updateTrip({ coverImage: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm dark:text-white"/></div>
+                         <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label><input type="date" value={trip.startDate} onChange={(e) => updateTrip({ startDate: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"/></div>
                         
                         {/* COMPANIONS SECTION */}
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2 mb-2">
                                 {trip.companions.map((c, i) => {
                                     // Handle legacy string vs new object
                                     const name = typeof c === 'string' ? c : c.name;
                                     const photo = typeof c === 'object' ? c.photo : null;
                                     return (
-                                        <div key={i} className="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm group pr-3 border border-slate-200 dark:border-slate-700">
-                                            <div className="w-6 h-6 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-[10px] font-bold">
+                                        <div key={i} className="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm group pr-3 border border-slate-200 dark:border-slate-700 dark:text-slate-200">
+                                            <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center text-[10px] font-bold">
                                                 {photo ? <img src={photo} className="w-full h-full object-cover" /> : name[0]}
                                             </div>
                                             <span className="font-medium">{name}</span>
@@ -1643,15 +1660,17 @@ export default function TravelApp() {
                                 })}
                             </div>
                             
-                            {/* Add Companion Form */}
-                            <form onSubmit={handleAddCompanion} className="flex gap-2 items-center bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700">
-                                <label className="cursor-pointer p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors relative group">
+                            {/* Add Companion Form - MOBILE FIXED */}
+                            <form onSubmit={handleAddCompanion} className="flex gap-2 items-center bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 w-full">
+                                <label className="cursor-pointer p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors relative group flex-shrink-0">
                                     {newCompanionPhoto ? (
-                                        <div className="w-6 h-6 rounded-full overflow-hidden ring-2 ring-indigo-500">
+                                        <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-indigo-500">
                                             <img src={URL.createObjectURL(newCompanionPhoto)} className="w-full h-full object-cover" />
                                         </div>
                                     ) : (
-                                        <ImagePlus size={20} className="text-slate-400 group-hover:text-indigo-600" />
+                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
+                                            <ImagePlus size={16} className="text-slate-400 group-hover:text-indigo-600 dark:text-slate-400 dark:group-hover:text-indigo-400" />
+                                        </div>
                                     )}
                                     <input 
                                         type="file" 
@@ -1664,21 +1683,16 @@ export default function TravelApp() {
                                     value={newCompanionName}
                                     onChange={(e) => setNewCompanionName(e.target.value)}
                                     placeholder="Add name..." 
-                                    className="flex-grow bg-transparent border-none outline-none text-sm font-medium placeholder:text-slate-400" 
+                                    className="flex-grow min-w-0 bg-transparent border-none outline-none text-sm font-medium placeholder:text-slate-400 dark:text-white h-10" 
                                 />
-                                <button type="submit" disabled={!newCompanionName.trim()} className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">Add</button>
+                                <button 
+                                    type="submit" 
+                                    disabled={!newCompanionName.trim()} 
+                                    className="flex-shrink-0 bg-indigo-600 text-white h-9 px-4 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-500/30"
+                                >
+                                    Add
+                                </button>
                             </form>
-                        </div>
-                        
-                        {/* DARK MODE TOGGLE (Moved Here) */}
-                        <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl">
-                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2"><Moon size={16}/> Dark Mode</span>
-                            <button 
-                                onClick={() => setIsDarkMode(!isDarkMode)} 
-                                className={`w-12 h-6 rounded-full p-1 transition-colors ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                            >
-                                <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
-                            </button>
                         </div>
                     </section>
                 </div>
