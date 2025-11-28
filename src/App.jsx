@@ -7,7 +7,8 @@ import {
   AlertTriangle, Check, Loader2, Plane, ShoppingBag, Coffee, Star, 
   DollarSign, BarChart3, User, LogOut, Share2, Download, CloudRain,
   Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy,
-  Globe, Search
+  Globe, Search, Menu as MenuIcon, LayoutGrid, MoreVertical, LayoutList,
+  Wand2
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -22,7 +23,10 @@ import {
     signOut,
     updateProfile
 } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "firebase/firestore";
+import { 
+    getFirestore, doc, setDoc, getDoc, onSnapshot, collection, 
+    enableIndexedDbPersistence 
+} from "firebase/firestore";
 
 // --- CONFIGURATION ---
 const firebaseConfig = {
@@ -44,6 +48,19 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// --- 1. OFFLINE PERSISTENCE SETUP ---
+try {
+    enableIndexedDbPersistence(db).catch((err) => {
+        if (err.code == 'failed-precondition') {
+            console.warn("Offline persistence failed: Multiple tabs open");
+        } else if (err.code == 'unimplemented') {
+            console.warn("Offline persistence not supported by browser");
+        }
+    });
+} catch (e) {
+    console.warn("Persistence initialization error:", e);
+}
+
 // --- FIRESTORE PATH HELPERS ---
 const getUserTripRef = (userId) => doc(db, 'artifacts', appId, 'users', userId, 'trip', 'data');
 const getUserBudgetRef = (userId) => doc(db, 'artifacts', appId, 'users', userId, 'budget', 'data');
@@ -55,7 +72,7 @@ const EXCHANGE_RATES = {
     SGD: 1.35, THB: 36.5, KRW: 1380, CNY: 7.23, AUD: 1.52, CAD: 1.37
 };
 
-// Updated Currency Options with ISO Country Codes for Flag Images
+// Updated Currency Options
 const CURRENCY_OPTIONS = [
     { code: 'PHP', name: 'Philippine Peso', symbol: '₱', countryCode: 'ph' },
     { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$', countryCode: 'hk' },
@@ -73,7 +90,7 @@ const CURRENCY_OPTIONS = [
 ];
 const BASE_CURRENCY = 'HKD'; 
 
-// Pre-defined Countries for Weather with ISO Codes
+// Pre-defined Countries
 const COUNTRY_DATA = [
     { name: 'Hong Kong', lat: 22.3193, lon: 114.1694, countryCode: 'hk' },
     { name: 'Macau', lat: 22.1987, lon: 113.5439, countryCode: 'mo' },
@@ -109,24 +126,24 @@ const formatCurrency = (amount, currencyCode) => {
 
 const getTypeColor = (type) => {
   switch (type) {
-    case 'food': return 'bg-orange-50 text-orange-600 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800/50';
-    case 'travel': return 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/50';
-    case 'shopping': return 'bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800/50';
-    case 'attraction': return 'bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800/50';
-    default: return 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
+    case 'food': return 'border-orange-200 text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800/50';
+    case 'travel': return 'border-blue-200 text-blue-600 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/50';
+    case 'shopping': return 'border-pink-200 text-pink-600 bg-pink-50 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800/50';
+    case 'attraction': return 'border-purple-200 text-purple-600 bg-purple-50 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800/50';
+    default: return 'border-slate-200 text-slate-600 bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
   }
 };
 const getTypeIcon = (type) => {
     switch (type) {
-      case 'food': return <Coffee size={14} className="mr-1.5" />;
-      case 'travel': return <Plane size={14} className="mr-1.5" />;
-      case 'shopping': return <ShoppingBag size={14} className="mr-1.5" />;
-      case 'attraction': return <Star size={14} className="mr-1.5" />;
-      default: return <MapPin size={14} className="mr-1.5" />;
+      case 'food': return <Coffee size={12} className="mr-1" />;
+      case 'travel': return <Plane size={12} className="mr-1" />;
+      case 'shopping': return <ShoppingBag size={12} className="mr-1" />;
+      case 'attraction': return <Star size={12} className="mr-1" />;
+      default: return <MapPin size={12} className="mr-1" />;
     }
 };
 
-// --- CUSTOM SELECT COMPONENT (Supports Images) ---
+// --- CUSTOM SELECT COMPONENT ---
 const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption, renderValue }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
@@ -488,6 +505,92 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase }) => {
     );
 };
 
+// --- CALENDAR VIEW COMPONENT ---
+const CalendarView = ({ trip, onSelectDay }) => {
+    const startDate = new Date(trip.startDate);
+    const year = startDate.getFullYear();
+    const month = startDate.getMonth();
+    
+    // Get number of days in the month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sunday
+    
+    const days = [];
+    // Add empty placeholders for days before start of month
+    for (let i = 0; i < firstDayOfMonth; i++) {
+        days.push(null);
+    }
+    // Add actual days
+    for (let i = 1; i <= daysInMonth; i++) {
+        days.push(new Date(year, month, i));
+    }
+
+    // Map trip days to dates for highlighting
+    const tripDayMap = {};
+    trip.days.forEach((d, idx) => {
+        tripDayMap[d.date] = { ...d, idx };
+    });
+
+    return (
+        <div className="max-w-4xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
+             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                        {startDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                    </h2>
+                    <div className="flex gap-2">
+                        <span className="text-xs font-bold px-2 py-1 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">Trip Days</span>
+                    </div>
+                </div>
+                
+                <div className="grid grid-cols-7 gap-2 md:gap-4 mb-2">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                        <div key={d} className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">{d}</div>
+                    ))}
+                </div>
+                
+                <div className="grid grid-cols-7 gap-2 md:gap-4">
+                    {days.map((date, i) => {
+                        if (!date) return <div key={`empty-${i}`} className="aspect-square"></div>;
+                        
+                        const dateStr = date.toISOString().split('T')[0];
+                        const tripDay = tripDayMap[dateStr];
+                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                        
+                        return (
+                            <button 
+                                key={dateStr}
+                                onClick={() => tripDay && onSelectDay(tripDay.idx)}
+                                disabled={!tripDay}
+                                className={`
+                                    aspect-square rounded-xl p-2 relative flex flex-col items-center justify-start text-sm transition-all
+                                    ${tripDay 
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:scale-105 cursor-pointer shadow-sm border border-indigo-100 dark:border-indigo-800' 
+                                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 opacity-50 cursor-default'
+                                    }
+                                    ${isToday ? 'ring-2 ring-emerald-500' : ''}
+                                `}
+                            >
+                                <span className={`font-bold ${tripDay ? 'text-lg' : ''}`}>{date.getDate()}</span>
+                                {tripDay && (
+                                    <div className="mt-1 w-full flex flex-col gap-0.5 items-center">
+                                        <span className="text-[10px] font-bold uppercase opacity-70 hidden md:block">Day {tripDay.idx + 1}</span>
+                                        <div className="flex gap-0.5 justify-center flex-wrap">
+                                            {tripDay.activities?.slice(0, 3).map((_, idx) => (
+                                                <div key={idx} className="w-1 h-1 rounded-full bg-indigo-400"></div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+             </div>
+        </div>
+    );
+};
+
 const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const [expenses, setExpenses] = useState([]);
     const [targetCurrency, setTargetCurrency] = useState('HKD');
@@ -580,7 +683,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
 // --- DASHBOARD VIEW (NEW) ---
 const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip }) => {
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 overflow-x-hidden">
             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                  <div className="flex justify-between items-center">
                     <Logo size="lg" />
@@ -646,7 +749,7 @@ export default function TravelApp() {
     const [view, setView] = useState('dashboard'); // 'dashboard' | 'trip'
     const [activeDayIdx, setActiveDayIdx] = useState(0);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [viewMode, setViewMode] = useState('timeline');
+    const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'budget' | 'calendar'
     const [modalOpen, setModalOpen] = useState(null);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [embeddedMaps, setEmbeddedMaps] = useState({});
@@ -654,10 +757,14 @@ export default function TravelApp() {
     const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
     const [imageEditState, setImageEditState] = useState(null); // { dayIdx, actId, url }
     const [sharedCode, setSharedCode] = useState(null);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     
     // NEW STATES
     const [isDataLoaded, setIsDataLoaded] = useState(false); 
     const [tripToDelete, setTripToDelete] = useState(null);
+    
+    // 4. SCROLL INTO VIEW REFS
+    const dayRefs = useRef([]);
 
     // --- MANDATORY AUTH PATTERN & DATA FETCHING ---
     useEffect(() => {
@@ -716,6 +823,17 @@ export default function TravelApp() {
         });
         return () => unsub();
     }, [user, view, currentTripId]);
+    
+    // 4. AUTO-SCROLL SIDEBAR LOGIC
+    useEffect(() => {
+        if (dayRefs.current[activeDayIdx]) {
+            dayRefs.current[activeDayIdx].scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        }
+    }, [activeDayIdx]);
 
     const saveTimeout = useRef(null);
     useEffect(() => {
@@ -846,6 +964,41 @@ export default function TravelApp() {
         newDays[dayIdx].activities[actIdx] = { ...newDays[dayIdx].activities[actIdx], [field]: value };
         updateTrip({ days: newDays });
     };
+    
+    // 3. OPTIMIZE ROUTE (SORT BY TIME)
+    const handleOptimizeRoute = () => {
+        const newDays = [...trip.days];
+        const currentActivities = [...newDays[activeDayIdx].activities];
+        
+        // Helper to parse time string like "09:00", "9:00 AM", "14:00 - 15:00"
+        const parseTime = (timeStr) => {
+            if(!timeStr) return 9999; // Push undefined times to end
+            // Extract the first valid time found
+            const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+            if (!match) return 9999;
+            
+            let [_, hours, minutes, period] = match;
+            hours = parseInt(hours);
+            minutes = parseInt(minutes);
+            
+            if (period) {
+                if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+                if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+            }
+            return hours * 60 + minutes;
+        };
+
+        currentActivities.sort((a, b) => parseTime(a.time) - parseTime(b.time));
+        newDays[activeDayIdx].activities = currentActivities;
+        updateTrip({ days: newDays });
+        alert("Route optimized based on time!");
+    };
+
+    const toggleViewMode = () => {
+        if (viewMode === 'timeline') setViewMode('calendar');
+        else if (viewMode === 'calendar') setViewMode('budget');
+        else setViewMode('timeline');
+    };
 
     if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
     if (!user) return <LoginPage onLogin={setUser} />;
@@ -920,7 +1073,7 @@ export default function TravelApp() {
     }));
 
     return (
-        <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-20`}>
+        <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-20 overflow-x-hidden`}>
             
              {/* --- HERO SECTION --- */}
             <div className="relative h-[40vh] md:h-[50vh] w-full group">
@@ -928,10 +1081,13 @@ export default function TravelApp() {
                       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
                       <img src={trip.coverImage} alt="Trip Cover" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80'} />
                 </div>
-                {/* Navbar */}
+                
+                {/* Navbar (UNCLUTTERED & RESPONSIVE) */}
                 <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
                       <Logo size="sm" onClick={() => setView('dashboard')} />
-                      <div className="flex gap-2">
+                      
+                      <div className="flex gap-2 relative">
+                        {/* Always visible icons */}
                         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/30 backdrop-blur-md rounded-full border border-white/10 mr-2">
                             <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
                                 <User size={12} className="text-white" />
@@ -940,12 +1096,40 @@ export default function TravelApp() {
                                 {user.email || 'Guest'}
                             </span>
                         </div>
-                        {isEditMode && <button onClick={() => setModalOpen('share')} className="p-2.5 bg-indigo-600 rounded-full hover:bg-indigo-700 shadow-lg"><Share2 size={18} /></button>}
-                        <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`}>{isEditMode ? <Unlock size={18} /> : <Lock size={18} />}</button>
-                        <button onClick={() => setViewMode(viewMode === 'budget' ? 'timeline' : 'budget')} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${viewMode === 'budget' ? 'bg-emerald-500 text-white' : 'bg-black/30 border-white/20'}`}><DollarSign size={18} /></button>
-                        <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md">{isDarkMode ? <Sun size={18} /> : <Moon size={18} />}</button>
-                        <button onClick={() => setModalOpen('settings')} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md"><Settings size={18} /></button>
-                         <button onClick={() => setShowSignOutConfirm(true)} className="p-2.5 bg-red-500/80 rounded-full hover:bg-red-600 backdrop-blur-md"><LogOut size={18} /></button>
+                        
+                        {/* EDIT MODE TOGGLE */}
+                        <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`} title="Toggle Edit Mode">{isEditMode ? <Unlock size={18} /> : <Lock size={18} />}</button>
+                        
+                        {/* VIEW MODE TOGGLE (Timeline -> Calendar -> Budget) */}
+                        <button onClick={toggleViewMode} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${viewMode !== 'timeline' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-black/30 border-white/20'}`} title="Change View">
+                            {viewMode === 'timeline' && <LayoutList size={18} />}
+                            {viewMode === 'calendar' && <CalendarIcon size={18} />}
+                            {viewMode === 'budget' && <DollarSign size={18} />}
+                        </button>
+
+                        {/* UNIFIED MENU DROPDOWN (Replaces individual icons) */}
+                        <div className="relative">
+                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md hover:bg-black/50 transition-colors">
+                                {isMenuOpen ? <X size={18} /> : <MenuIcon size={18} />}
+                            </button>
+                            
+                            {/* MENU DROPDOWN LIST */}
+                            {isMenuOpen && (
+                                <div className="absolute top-14 right-0 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 z-50 animate-in slide-in-from-top-2">
+                                     {/* Mobile User Info (Only show on mobile) */}
+                                     <div className="md:hidden flex items-center gap-2 p-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                                         <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                                            <User size={12} className="text-indigo-600" />
+                                         </div>
+                                         <span className="text-[10px] font-bold text-slate-500 truncate w-full">{user.email}</span>
+                                     </div>
+
+                                     <button onClick={() => { setModalOpen('share'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Share2 size={16} /> Share Trip</button>
+                                     <button onClick={() => { setModalOpen('settings'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Settings size={16} /> Trip Settings</button>
+                                     <button onClick={() => { setShowSignOutConfirm(true); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-red-500 text-sm font-medium"><LogOut size={16} /> Sign Out</button>
+                                </div>
+                            )}
+                        </div>
                       </div>
                 </div>
                 {/* Title Block */}
@@ -978,15 +1162,24 @@ export default function TravelApp() {
             </div>
 
             {/* --- MAIN CONTENT --- */}
-            {viewMode === 'budget' ? (
+            {viewMode === 'budget' && (
                 <BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} />
-            ) : (
+            )}
+            
+            {viewMode === 'calendar' && (
+                <CalendarView 
+                    trip={trip} 
+                    onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} 
+                />
+            )}
+            
+            {viewMode === 'timeline' && (
                 <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30">
                     
-                    {/* Day Selector */}
-                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-4 z-40">
+                    {/* Day Selector - MOVED DOWN (mt-8) & INCREASED STICKY TOP (top-20) */}
+                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-20 z-40 mt-8">
                         {trip.days.map((day, idx) => (
-                            <div key={day.id} className="relative group/day">
+                            <div key={day.id} ref={el => dayRefs.current[idx] = el} className="relative group/day">
                                 <button onClick={() => setActiveDayIdx(idx)} className={`relative flex-shrink-0 px-5 py-2.5 rounded-xl transition-all duration-300 flex flex-col items-center min-w-[120px] ${activeDayIdx === idx ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Day {idx + 1}</span>
                                     <span className="text-sm font-semibold truncate max-w-[120px]">{day.date.split('-').slice(1).join('/')}</span>
@@ -1032,43 +1225,49 @@ export default function TravelApp() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* OPTIMIZE BUTTON - Only in Edit Mode */}
+                            {isEditMode && (
+                                <button onClick={handleOptimizeRoute} className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                                    <Wand2 size={18} /> Optimize Order (By Time)
+                                </button>
+                            )}
                         </div>
 
-                        {/* Activity Cards */}
-                        <div className="space-y-6">
+                        {/* Activity Cards with Visual Timeline - DARKENED BORDER */}
+                        <div className="relative border-l-2 border-slate-300 dark:border-slate-700 ml-6 md:ml-40 space-y-8 pl-8 md:pl-10 pb-4">
                              {activeDay.activities.map((act, idx) => (
-                                <div key={act.id} className={`relative md:grid md:grid-cols-[140px_1fr] gap-6 group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-                                    <div className="hidden md:flex flex-col items-end pt-5 pr-4 text-right">
-                                        <span className="font-extrabold text-zinc-800 dark:text-white text-sm leading-tight">{act.time}</span>
-                                        
-                                        {/* EDITABLE ACTIVITY TYPE ICON/LABEL */}
-                                        <div className="mt-2 relative">
-                                            {isEditMode ? (
-                                                <select 
-                                                    value={act.type} 
-                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'type', e.target.value)} 
-                                                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)} appearance-none cursor-pointer outline-none focus:ring-2 ring-indigo-500`}
-                                                >
-                                                    {CATEGORY_ICONS.map(cat => (
-                                                        <option key={cat.id} value={cat.id}>{cat.label}</option>
-                                                    ))}
-                                                </select>
-                                            ) : (
-                                                <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)}`}>
-                                                    {getTypeIcon(act.type)} {act.type}
-                                                </div>
-                                            )}
-                                        </div>
+                                <div key={act.id} className={`relative group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+                                    
+                                    {/* TIMELINE DOT */}
+                                    <div className="absolute top-5 -left-10 md:-left-12 w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-zinc-100 dark:ring-slate-950 z-10 shadow-sm"></div>
+
+                                    {/* TIME COLUMN (Desktop: LEFT SIDE, Mobile: HIDDEN) */}
+                                    <div className="hidden md:flex flex-col items-end absolute -left-40 top-5 w-32 text-right pr-4">
+                                        {/* EDITABLE TIME */}
+                                        {isEditMode ? (
+                                             <input 
+                                                type="text" 
+                                                value={act.time} 
+                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'time', e.target.value)}
+                                                className="font-extrabold text-zinc-800 dark:text-white text-sm leading-tight bg-transparent border-b border-slate-300 outline-none w-full text-right"
+                                                placeholder="09:00"
+                                            />
+                                        ) : (
+                                            <span className="font-extrabold text-zinc-800 dark:text-white text-sm leading-tight">{act.time}</span>
+                                        )}
                                     </div>
                                     
-                                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300">
+                                    {/* CARD CONTENT */}
+                                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300 w-full">
                                         <div className="flex flex-col sm:flex-row h-full">
                                             <div className="relative w-full h-40 sm:w-40 sm:h-auto flex-shrink-0 bg-slate-200 group/img">
                                                 <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent sm:hidden"></div>
-                                                <div className="absolute bottom-3 left-3 text-white font-bold sm:hidden text-lg drop-shadow-md">{act.time}</div>
+                                                {/* Mobile-only time display inside image */}
+                                                <div className="absolute bottom-3 left-3 text-white font-bold sm:hidden text-lg drop-shadow-md md:hidden">{act.time}</div>
                                                 
-                                                {/* MOBILE FIX: Camera is ALWAYS visible in Edit Mode, no hover required */}
+                                                {/* MOBILE FIX: Camera is ALWAYS visible in Edit Mode */}
                                                 {isEditMode && (
                                                     <button 
                                                         onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} 
@@ -1079,14 +1278,50 @@ export default function TravelApp() {
                                                 )}
                                             </div>
                                             <div className="p-4 flex flex-col flex-grow relative min-w-0">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    {isEditMode ? (
-                                                        <div className="flex gap-1"><GripVertical className="text-slate-300 cursor-grab" size={20} /><button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600"><Trash2 size={18} /></button></div>
-                                                    ) : (
-                                                        <button onClick={() => setEmbeddedMaps(prev => ({...prev, [act.id]: !prev[act.id]}))} className={`transition-colors p-1 rounded-full ${embeddedMaps[act.id] ? 'bg-indigo-100 text-indigo-600' : 'text-slate-300 hover:text-indigo-600'}`} title="Toggle Map"><MapPin size={18} /></button>
+                                                
+                                                {/* MAP ICON TO TOP RIGHT ABSOLUTE POSITION */}
+                                                <div className="absolute top-4 right-4 z-10 flex gap-2">
+                                                    {!isEditMode && (
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation(); // Prevent detail expansion
+                                                                setEmbeddedMaps(prev => ({...prev, [act.id]: !prev[act.id]}))
+                                                            }} 
+                                                            className={`transition-colors p-2 rounded-full ${embeddedMaps[act.id] ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`} 
+                                                            title="Toggle Map"
+                                                        >
+                                                            <MapPin size={18} />
+                                                        </button>
+                                                    )}
+                                                    {isEditMode && (
+                                                        <div className="flex gap-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-slate-800">
+                                                            <GripVertical className="text-slate-300 cursor-grab" size={20} />
+                                                            <button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600"><Trash2 size={18} /></button>
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-grow space-y-2">
+
+                                                <div className="flex-grow space-y-2 pr-12">
+                                                    
+                                                     {/* 1. TYPE ICON (Now at top left) */}
+                                                    <div className="mb-2">
+                                                        {isEditMode ? (
+                                                            <select 
+                                                                value={act.type} 
+                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'type', e.target.value)} 
+                                                                className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)} appearance-none cursor-pointer outline-none focus:ring-2 ring-indigo-500`}
+                                                            >
+                                                                {CATEGORY_ICONS.map(cat => (
+                                                                    <option key={cat.id} value={cat.id}>{cat.label}</option>
+                                                                ))}
+                                                            </select>
+                                                        ) : (
+                                                            <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)}`}>
+                                                                {getTypeIcon(act.type)} {act.type}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
                                                     {isEditMode ? (
                                                         <>
                                                             <input value={act.title} onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'title', e.target.value)} className="w-full font-bold text-lg text-zinc-900 dark:text-white bg-transparent border-b border-slate-200 mb-1 focus:outline-none placeholder-slate-400" placeholder="Activity Title"/>
@@ -1105,10 +1340,10 @@ export default function TravelApp() {
                                                     )}
                                                 </div>
                                                 
-                                                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                                                     <details className="group/details w-full">
                                                         <summary className="list-none flex items-center justify-between w-full cursor-pointer text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider">
-                                                            <span className="flex items-center gap-1">Details <ChevronRight size={12} className="group-open/details:rotate-90 transition-transform" /></span>
+                                                            <span className="flex items-center gap-1">Details & Notes <ChevronRight size={12} className="group-open/details:rotate-90 transition-transform" /></span>
                                                             <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
                                                                 {isEditMode ? (
                                                                     <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded p-0.5">
@@ -1150,7 +1385,7 @@ export default function TravelApp() {
                                                         </div>
                                                         
                                                         {embeddedMaps[act.id] && (
-                                                            <div className="h-48 mt-3 rounded-lg overflow-hidden bg-slate-100">
+                                                            <div className="h-48 mt-3 rounded-lg overflow-hidden bg-slate-100 w-full relative z-20">
                                                                 <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(act.title)}&t=&z=15&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
                                                             </div>
                                                         )}
@@ -1253,6 +1488,17 @@ export default function TravelApp() {
                         <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label><input type="text" value={trip.coverImage} onChange={(e) => updateTrip({ coverImage: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm"/></div>
                          <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label><input type="date" value={trip.startDate} onChange={(e) => updateTrip({ startDate: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
                         <div className="space-y-2"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label><div className="flex flex-wrap gap-2">{trip.companions.map((c, i) => (<span key={i} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm flex items-center gap-1 group">{c}<button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500"><X size={12} /></button></span>))}</div><form onSubmit={(e) => { e.preventDefault(); if (e.target.name.value) { updateTrip({ companions: [...trip.companions, e.target.name.value] }); e.target.name.value = ''; } }} className="flex gap-2"><input name="name" placeholder="Add person..." className="flex-grow bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /><button type="submit" className="bg-indigo-600 text-white px-4 rounded-xl text-sm font-bold">Add</button></form></div>
+                        
+                        {/* DARK MODE TOGGLE (Moved Here) */}
+                        <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300 flex items-center gap-2"><Moon size={16}/> Dark Mode</span>
+                            <button 
+                                onClick={() => setIsDarkMode(!isDarkMode)} 
+                                className={`w-12 h-6 rounded-full p-1 transition-colors ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                            >
+                                <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
                     </section>
                 </div>
               </Modal>
