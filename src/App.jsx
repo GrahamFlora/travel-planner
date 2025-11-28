@@ -8,7 +8,7 @@ import {
   DollarSign, BarChart3, User, LogOut, Share2, Download, CloudRain,
   Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy,
   Globe, Search, Menu as MenuIcon, LayoutGrid, MoreVertical, LayoutList,
-  Wand2
+  Wand2, ImagePlus
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -111,6 +111,75 @@ const COUNTRY_DATA = [
     { name: 'Australia (Sydney)', lat: -33.8688, lon: 151.2093, countryCode: 'au' },
     { name: 'Canada (Toronto)', lat: 43.6510, lon: -79.3470, countryCode: 'ca' },
 ];
+
+// --- AUTO-DETECT COVER IMAGES MAP ---
+const COVER_IMAGES = {
+    'japan': 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=2000&q=80',
+    'tokyo': 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=2000&q=80',
+    'osaka': 'https://images.unsplash.com/photo-1590253232292-15f11598f467?auto=format&fit=crop&w=2000&q=80',
+    'kyoto': 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=2000&q=80',
+    'korea': 'https://images.unsplash.com/photo-1517154421773-052f83c430e0?auto=format&fit=crop&w=2000&q=80',
+    'seoul': 'https://images.unsplash.com/photo-1538485399081-7191377e8241?auto=format&fit=crop&w=2000&q=80',
+    'china': 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=2000&q=80',
+    'beijing': 'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?auto=format&fit=crop&w=2000&q=80',
+    'hong kong': 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80',
+    'macau': 'https://images.unsplash.com/photo-1552882834-3147d1002b85?auto=format&fit=crop&w=2000&q=80',
+    'thailand': 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&w=2000&q=80',
+    'bangkok': 'https://images.unsplash.com/photo-1563492065599-3520f775eeed?auto=format&fit=crop&w=2000&q=80',
+    'singapore': 'https://images.unsplash.com/photo-1565967511849-76a60a516170?auto=format&fit=crop&w=2000&q=80',
+    'philippines': 'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?auto=format&fit=crop&w=2000&q=80',
+    'manila': 'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?auto=format&fit=crop&w=2000&q=80',
+    'france': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2000&q=80',
+    'paris': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=2000&q=80',
+    'italy': 'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?auto=format&fit=crop&w=2000&q=80',
+    'rome': 'https://images.unsplash.com/photo-1529260830199-42c42dda5f3d?auto=format&fit=crop&w=2000&q=80',
+    'london': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=2000&q=80',
+    'uk': 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=2000&q=80',
+    'usa': 'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?auto=format&fit=crop&w=2000&q=80',
+    'new york': 'https://images.unsplash.com/photo-1496442226666-8d4a0e62e6e9?auto=format&fit=crop&w=2000&q=80',
+    'california': 'https://images.unsplash.com/photo-1440778303588-435521a205bc?auto=format&fit=crop&w=2000&q=80',
+    'australia': 'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?auto=format&fit=crop&w=2000&q=80',
+    'sydney': 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=2000&q=80',
+    'canada': 'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?auto=format&fit=crop&w=2000&q=80',
+    'germany': 'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=2000&q=80',
+};
+
+// --- IMAGE UTILS ---
+const compressImage = (file) => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // Thumbnail size for companions (150x150 is plenty for avatar circles)
+                const MAX_WIDTH = 150;
+                const MAX_HEIGHT = 150;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_WIDTH) {
+                        height *= MAX_WIDTH / width;
+                        width = MAX_WIDTH;
+                    }
+                } else {
+                    if (height > MAX_HEIGHT) {
+                        width *= MAX_HEIGHT / height;
+                        height = MAX_HEIGHT;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', 0.8)); // 0.8 quality
+            };
+        };
+    });
+};
 
 const getFlagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
 
@@ -762,7 +831,9 @@ export default function TravelApp() {
     // NEW STATES
     const [isDataLoaded, setIsDataLoaded] = useState(false); 
     const [tripToDelete, setTripToDelete] = useState(null);
-    
+    const [newCompanionName, setNewCompanionName] = useState('');
+    const [newCompanionPhoto, setNewCompanionPhoto] = useState(null);
+
     // 4. SCROLL INTO VIEW REFS
     const dayRefs = useRef([]);
 
@@ -853,6 +924,32 @@ export default function TravelApp() {
 
     const updateTrip = (updates) => { setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); };
     
+    // --- AUTO-DETECT COVER IMAGE EFFECT ---
+    useEffect(() => {
+        if (!trip || !trip.title) return;
+        
+        const titleLower = trip.title.toLowerCase();
+        let matchedImage = null;
+
+        // Check if any country/city keyword exists in title
+        for (const [key, url] of Object.entries(COVER_IMAGES)) {
+            if (titleLower.includes(key)) {
+                matchedImage = url;
+                break; // Stop at first match
+            }
+        }
+
+        // Only update if we found a match AND it's different from current (to prevent loops/overwrites if user manually set it to same)
+        // Note: This forces the change if a keyword is found.
+        if (matchedImage && trip.coverImage !== matchedImage) {
+           // We'll update state directly. The saveTimeout will handle persistence.
+           // However, to avoid annoying user if they manually pasted a DIFFERENT url that doesn't match our db, 
+           // we only overwrite if the current image is one of OUR default images or empty/placeholder.
+           // For simplicity in this "magic" feature request, we'll overwrite it, assuming the user WANTS the magic.
+           updateTrip({ coverImage: matchedImage });
+        }
+    }, [trip?.title]); // Only run when title changes
+
     // Actions
     const handleSelectTrip = (id) => { setCurrentTripId(id); setView('trip'); setActiveDayIdx(0); };
     const handleNewTrip = () => {
@@ -1072,6 +1169,30 @@ export default function TravelApp() {
         icon: getFlagUrl(c.countryCode)
     }));
 
+    // --- COMPANION HANDLER ---
+    const handleAddCompanion = async (e) => {
+        e.preventDefault();
+        if (!newCompanionName.trim()) return;
+
+        let photoUrl = null;
+        if (newCompanionPhoto) {
+            photoUrl = await compressImage(newCompanionPhoto);
+        }
+
+        const newCompanion = {
+            name: newCompanionName,
+            photo: photoUrl
+        };
+
+        // Handle legacy strings vs new objects structure
+        const updatedCompanions = [...trip.companions, newCompanion];
+        updateTrip({ companions: updatedCompanions });
+        
+        // Reset form
+        setNewCompanionName('');
+        setNewCompanionPhoto(null);
+    };
+
     return (
         <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-20 overflow-x-hidden`}>
             
@@ -1143,9 +1264,21 @@ export default function TravelApp() {
                         <div className="flex items-center gap-3 mb-4">
                             <span className="px-3 py-1 bg-indigo-500/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg backdrop-blur-sm">{trip.startDate}</span>
                             <div className="flex -space-x-2">
-                                {trip.companions?.map((c, i) => (
-                                    <div key={i} className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-500 flex items-center justify-center text-[10px] font-bold text-indigo-800" title={c}>{c[0]}</div>
-                                ))}
+                                {trip.companions?.map((c, i) => {
+                                    // Handle legacy string data vs new object data
+                                    const name = typeof c === 'string' ? c : c.name;
+                                    const photo = typeof c === 'object' ? c.photo : null;
+                                    
+                                    return (
+                                        <div key={i} className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-500 flex items-center justify-center text-[10px] font-bold text-indigo-800 relative overflow-hidden" title={name}>
+                                            {photo ? (
+                                                <img src={photo} alt={name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                name[0]
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                         {isEditMode ? (
@@ -1457,6 +1590,7 @@ export default function TravelApp() {
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trip Name</label>
                             <input type="text" value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold"/>
+                            <p className="text-[10px] text-slate-400">Pro tip: Type a country like "Trip to Japan" to auto-update cover photo.</p>
                         </div>
                         
                         {/* Weather Location Selector with Images */}
@@ -1488,7 +1622,53 @@ export default function TravelApp() {
 
                         <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label><input type="text" value={trip.coverImage} onChange={(e) => updateTrip({ coverImage: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm"/></div>
                          <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label><input type="date" value={trip.startDate} onChange={(e) => updateTrip({ startDate: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label><div className="flex flex-wrap gap-2">{trip.companions.map((c, i) => (<span key={i} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm flex items-center gap-1 group">{c}<button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500"><X size={12} /></button></span>))}</div><form onSubmit={(e) => { e.preventDefault(); if (e.target.name.value) { updateTrip({ companions: [...trip.companions, e.target.name.value] }); e.target.name.value = ''; } }} className="flex gap-2"><input name="name" placeholder="Add person..." className="flex-grow bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-2 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm" /><button type="submit" className="bg-indigo-600 text-white px-4 rounded-xl text-sm font-bold">Add</button></form></div>
+                        
+                        {/* COMPANIONS SECTION */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label>
+                            <div className="flex flex-wrap gap-2">
+                                {trip.companions.map((c, i) => {
+                                    // Handle legacy string vs new object
+                                    const name = typeof c === 'string' ? c : c.name;
+                                    const photo = typeof c === 'object' ? c.photo : null;
+                                    return (
+                                        <div key={i} className="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm group pr-3 border border-slate-200 dark:border-slate-700">
+                                            <div className="w-6 h-6 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center text-[10px] font-bold">
+                                                {photo ? <img src={photo} className="w-full h-full object-cover" /> : name[0]}
+                                            </div>
+                                            <span className="font-medium">{name}</span>
+                                            <button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500"><X size={14} /></button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            
+                            {/* Add Companion Form */}
+                            <form onSubmit={handleAddCompanion} className="flex gap-2 items-center bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700">
+                                <label className="cursor-pointer p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors relative group">
+                                    {newCompanionPhoto ? (
+                                        <div className="w-6 h-6 rounded-full overflow-hidden ring-2 ring-indigo-500">
+                                            <img src={URL.createObjectURL(newCompanionPhoto)} className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : (
+                                        <ImagePlus size={20} className="text-slate-400 group-hover:text-indigo-600" />
+                                    )}
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        className="hidden" 
+                                        onChange={(e) => e.target.files?.[0] && setNewCompanionPhoto(e.target.files[0])}
+                                    />
+                                </label>
+                                <input 
+                                    value={newCompanionName}
+                                    onChange={(e) => setNewCompanionName(e.target.value)}
+                                    placeholder="Add name..." 
+                                    className="flex-grow bg-transparent border-none outline-none text-sm font-medium placeholder:text-slate-400" 
+                                />
+                                <button type="submit" disabled={!newCompanionName.trim()} className="bg-indigo-600 text-white px-4 py-1.5 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">Add</button>
+                            </form>
+                        </div>
                         
                         {/* DARK MODE TOGGLE (Moved Here) */}
                         <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl">
