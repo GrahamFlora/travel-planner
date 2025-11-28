@@ -1197,7 +1197,8 @@ export default function TravelApp() {
                         )}
                     </div>
 
-                    <div className="grid lg:grid-cols-[280px_1fr] gap-8 md:gap-12 animate-in fade-in duration-500">
+                    {/* LAYOUT FIX: Changed 'grid' to 'flex flex-col lg:grid' to prevent mobile overflow issues */}
+                    <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 md:gap-12 animate-in fade-in duration-500">
                          {/* Day Info Sidebar */}
                         <div className="space-y-6 lg:sticky lg:top-32 h-min">
                              <div className="space-y-2">
@@ -1300,7 +1301,8 @@ export default function TravelApp() {
                                                     )}
                                                 </div>
 
-                                                <div className="flex-grow space-y-2 pr-10">
+                                                {/* Reduced padding-right (pr-6) on mobile to prevent cut-off text */}
+                                                <div className="flex-grow space-y-2 pr-6 md:pr-10">
                                                     
                                                      {/* 1. TYPE ICON (Now at top left) */}
                                                     <div className="mb-2">
