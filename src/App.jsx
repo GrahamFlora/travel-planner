@@ -8,7 +8,7 @@ import {
   DollarSign, BarChart3, User, LogOut, Share2, Download, CloudRain,
   Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy,
   Globe, Search, Menu as MenuIcon, LayoutGrid, MoreVertical, LayoutList,
-  Wand2, ImagePlus, Pencil, Clock
+  Wand2, ImagePlus, Pencil, Clock, RefreshCw
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -212,7 +212,7 @@ const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption,
     );
 };
 
-// --- UPDATED WEATHER HOOK (SMARTER DATES) ---
+// --- UPDATED WEATHER HOOK (MOBILE CACHE FIX) ---
 const useWeather = (lat, lon, startDate, daysCount = 7) => {
     const [weatherData, setWeatherData] = useState({});
     
@@ -221,15 +221,18 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
 
         const fetchWeather = async () => {
             try {
-                // Calculate dynamic end date based on trip length
+                // Determine start date (default to today if null)
                 const start = new Date(startDate || new Date());
                 const end = new Date(start);
-                end.setDate(end.getDate() + (daysCount > 1 ? daysCount : 7)); // Fetch enough days
+                
+                // Add extra buffer days to handle timezone shifts and ensure coverage
+                // We add 1 extra day to be safe
+                end.setDate(end.getDate() + (daysCount > 1 ? daysCount : 7) + 1); 
 
                 const startStr = start.toISOString().split('T')[0];
                 const endStr = end.toISOString().split('T')[0];
 
-                // Retry Logic
+                // Retry Logic & CACHE BUSTING
                 let response = null;
                 let attempts = 0;
                 const maxAttempts = 5;
@@ -237,10 +240,13 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                 
                 while (attempts < maxAttempts) {
                     try {
-                        // Use explicit dates to ensure we get data for the TRIP duration
-                        response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${startStr}&end_date=${endStr}`);
+                        // Added '&t=' + Date.now() to force new fetch on mobile networks that cache aggressively
+                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${startStr}&end_date=${endStr}&t=${Date.now()}`;
+                        response = await fetch(url);
                         if (response.ok) break;
-                    } catch (e) { }
+                    } catch (e) { 
+                        // console.error("Attempt failed", e); 
+                    }
 
                     attempts++;
                     if (attempts < maxAttempts) {
@@ -263,10 +269,13 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                     });
                 }
                 setWeatherData(weatherMap);
-            } catch (error) { console.error("Weather fetch failed", error); }
+            } catch (error) { 
+                console.error("Weather fetch failed", error);
+                // Don't clear old data on error to prevent flashing, just keep what we have
+            }
         };
         fetchWeather();
-    }, [lat, lon, startDate, daysCount]); // Re-fetch if trip start or length changes
+    }, [lat, lon, startDate, daysCount]); // Re-fetch if these change
     return weatherData;
 };
 
@@ -280,10 +289,12 @@ const WeatherDisplay = ({ date, weatherData }) => {
         if (realWeather.code > 50) Icon = CloudRain;
         tempText = `${Math.round(realWeather.min)}°/${Math.round(realWeather.max)}°`;
     } else {
+        // If weatherData is empty, we are probably fetching
         if (Object.keys(weatherData).length === 0) {
             Icon = Loader2;
             tempText = "Fetching";
         } else {
+             // We have data but not for this date (out of range/error)
              Icon = CalendarIcon;
              tempText = "--";
         }
@@ -1873,4 +1884,4 @@ export default function TravelApp() {
             </Modal>
         </div>
     );
-}
+      }
