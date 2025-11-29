@@ -8,7 +8,7 @@ import {
   DollarSign, BarChart3, User, LogOut, Share2, Download, CloudRain,
   Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy,
   Globe, Search, Menu as MenuIcon, LayoutGrid, MoreVertical, LayoutList,
-  Wand2, ImagePlus, Pencil
+  Wand2, ImagePlus, Pencil, Clock
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -212,15 +212,24 @@ const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption,
     );
 };
 
-// --- WEATHER HOOK ---
-const useWeather = (lat, lon) => {
+// --- UPDATED WEATHER HOOK (SMARTER DATES) ---
+const useWeather = (lat, lon, startDate, daysCount = 7) => {
     const [weatherData, setWeatherData] = useState({});
+    
     useEffect(() => {
         if (!lat || !lon) return;
 
         const fetchWeather = async () => {
             try {
-                // Implementing exponential backoff for API call
+                // Calculate dynamic end date based on trip length
+                const start = new Date(startDate || new Date());
+                const end = new Date(start);
+                end.setDate(end.getDate() + (daysCount > 1 ? daysCount : 7)); // Fetch enough days
+
+                const startStr = start.toISOString().split('T')[0];
+                const endStr = end.toISOString().split('T')[0];
+
+                // Retry Logic
                 let response = null;
                 let attempts = 0;
                 const maxAttempts = 5;
@@ -228,21 +237,19 @@ const useWeather = (lat, lon) => {
                 
                 while (attempts < maxAttempts) {
                     try {
-                        response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&current_weather=true&timezone=auto`);
+                        // Use explicit dates to ensure we get data for the TRIP duration
+                        response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${startStr}&end_date=${endStr}`);
                         if (response.ok) break;
-                    } catch (e) {
-                        // Network error, proceed to retry
-                    }
+                    } catch (e) { }
 
                     attempts++;
                     if (attempts < maxAttempts) {
                         await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2; // Exponential increase
+                        delay *= 2; 
                     }
                 }
 
-                if (!response || !response.ok) throw new Error("Weather API failed after retries.");
-
+                if (!response || !response.ok) throw new Error("Weather API failed");
 
                 const data = await response.json();
                 const weatherMap = {};
@@ -259,28 +266,32 @@ const useWeather = (lat, lon) => {
             } catch (error) { console.error("Weather fetch failed", error); }
         };
         fetchWeather();
-    }, [lat, lon]);
+    }, [lat, lon, startDate, daysCount]); // Re-fetch if trip start or length changes
     return weatherData;
 };
 
 const WeatherDisplay = ({ date, weatherData }) => {
     const realWeather = weatherData[date];
     let Icon = Sun;
-    let tempText = "TBD";
+    let tempText = "Loading...";
     
     if (realWeather) {
         if (realWeather.code > 3) Icon = CloudIcon;
         if (realWeather.code > 50) Icon = CloudRain;
         tempText = `${Math.round(realWeather.min)}°/${Math.round(realWeather.max)}°`;
     } else {
-        const d = new Date(date).getDate();
-        if (d % 2 === 0) { Icon = Sun; tempText = "20°/25°"; }
-        else { Icon = CloudDrizzle; tempText = "19°/24°"; }
+        if (Object.keys(weatherData).length === 0) {
+            Icon = Loader2;
+            tempText = "Fetching";
+        } else {
+             Icon = CalendarIcon;
+             tempText = "--";
+        }
     }
 
     return (
-        <div className="flex items-center text-xs font-medium text-slate-400 mt-1">
-            <Icon size={12} className="mr-1" /> {tempText}
+        <div className="flex items-center text-xs font-medium text-slate-400 mt-1 min-h-[16px]">
+            <Icon size={12} className={`mr-1 ${tempText === 'Fetching' ? 'animate-spin' : ''}`} /> {tempText}
         </div>
     );
 };
@@ -549,7 +560,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
     );
 };
 
-// --- CALENDAR VIEW COMPONENT ---
+// --- CALENDAR VIEW COMPONENT (UPDATED RESPONSIVE) ---
 const CalendarView = ({ trip, onSelectDay }) => {
     const startDate = new Date(trip.startDate);
     const year = startDate.getFullYear();
@@ -576,60 +587,115 @@ const CalendarView = ({ trip, onSelectDay }) => {
     });
 
     return (
-        <div className="max-w-4xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
+        <div className="max-w-6xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white">
                         {startDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
                     </h2>
                     <div className="flex gap-2">
-                        <span className="text-xs font-bold px-2 py-1 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">Trip Days</span>
+                        <span className="text-xs font-bold px-2 py-1 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">Trip Schedule</span>
                     </div>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-2 md:gap-4 mb-2">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                        <div key={d} className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">{d}</div>
-                    ))}
+                {/* --- DESKTOP GRID VIEW (Hidden on Mobile) --- */}
+                <div className="hidden md:block">
+                    <div className="grid grid-cols-7 gap-4 mb-2">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                            <div key={d} className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">{d}</div>
+                        ))}
+                    </div>
+                    
+                    <div className="grid grid-cols-7 gap-4 auto-rows-fr">
+                        {days.map((date, i) => {
+                            if (!date) return <div key={`empty-${i}`} className="aspect-square bg-slate-50/50 dark:bg-slate-800/30 rounded-xl"></div>;
+                            
+                            const dateStr = date.toISOString().split('T')[0];
+                            const tripDay = tripDayMap[dateStr];
+                            const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                            
+                            return (
+                                <div 
+                                    key={dateStr}
+                                    onClick={() => tripDay && onSelectDay(tripDay.idx)}
+                                    className={`
+                                        min-h-[140px] rounded-xl p-3 relative flex flex-col items-start justify-start text-sm transition-all border
+                                        ${tripDay 
+                                            ? 'bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-900/50 shadow-sm hover:shadow-md cursor-pointer group' 
+                                            : 'bg-slate-50 dark:bg-slate-800/50 border-transparent text-slate-400 opacity-60'
+                                        }
+                                        ${isToday ? 'ring-2 ring-emerald-500' : ''}
+                                    `}
+                                >
+                                    <span className={`font-bold mb-2 ${tripDay ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 w-8 h-8 flex items-center justify-center rounded-full' : ''}`}>{date.getDate()}</span>
+                                    
+                                    {tripDay && (
+                                        <div className="w-full space-y-1 overflow-y-auto custom-scrollbar max-h-[100px]">
+                                            {tripDay.activities?.map((act, idx) => (
+                                                <div key={idx} className="text-[10px] font-medium bg-slate-100 dark:bg-slate-700/50 p-1.5 rounded truncate text-slate-700 dark:text-slate-300 border-l-2 border-indigo-400">
+                                                    <span className="opacity-70 mr-1">{act.time}</span>
+                                                    {act.title}
+                                                </div>
+                                            ))}
+                                            {(!tripDay.activities || tripDay.activities.length === 0) && (
+                                                <span className="text-[10px] text-slate-400 italic">No activities</span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-                
-                <div className="grid grid-cols-7 gap-2 md:gap-4">
-                    {days.map((date, i) => {
-                        if (!date) return <div key={`empty-${i}`} className="aspect-square"></div>;
-                        
+
+                {/* --- MOBILE AGENDA VIEW (Visible only on Mobile) --- */}
+                <div className="md:hidden space-y-4">
+                     {/* Filter only days with trip data for clean list, or show all if needed. Showing all relevant days. */}
+                    {days.filter(d => d).map((date, i) => {
                         const dateStr = date.toISOString().split('T')[0];
                         const tripDay = tripDayMap[dateStr];
-                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
-                        
+                        // Only show days that are part of the trip on mobile to save space
+                        if (!tripDay) return null; 
+
                         return (
-                            <button 
-                                key={dateStr}
-                                onClick={() => tripDay && onSelectDay(tripDay.idx)}
-                                disabled={!tripDay}
-                                className={`
-                                    aspect-square rounded-xl p-2 relative flex flex-col items-center justify-start text-sm transition-all
-                                    ${tripDay 
-                                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 hover:scale-105 cursor-pointer shadow-sm border border-indigo-100 dark:border-indigo-800' 
-                                        : 'bg-slate-50 dark:bg-slate-800/50 text-slate-400 opacity-50 cursor-default'
-                                    }
-                                    ${isToday ? 'ring-2 ring-emerald-500' : ''}
-                                `}
-                            >
-                                <span className={`font-bold ${tripDay ? 'text-lg' : ''}`}>{date.getDate()}</span>
-                                {tripDay && (
-                                    <div className="mt-1 w-full flex flex-col gap-0.5 items-center">
-                                        <span className="text-[10px] font-bold uppercase opacity-70 hidden md:block">Day {tripDay.idx + 1}</span>
-                                        <div className="flex gap-0.5 justify-center flex-wrap">
-                                            {tripDay.activities?.slice(0, 3).map((_, idx) => (
-                                                <div key={idx} className="w-1 h-1 rounded-full bg-indigo-400"></div>
-                                            ))}
-                                        </div>
+                            <div key={dateStr} className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex flex-col items-center justify-center text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                        <span className="text-xs font-bold uppercase">{date.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+                                        <span className="text-lg font-black">{date.getDate()}</span>
                                     </div>
-                                )}
-                            </button>
+                                    <div>
+                                        <h4 className="font-bold text-slate-900 dark:text-white">{tripDay.title}</h4>
+                                        <p className="text-xs text-slate-500">{tripDay.activities?.length || 0} Activities</p>
+                                    </div>
+                                    <button onClick={() => onSelectDay(tripDay.idx)} className="ml-auto p-2 bg-white dark:bg-slate-700 rounded-full shadow-sm text-slate-400 hover:text-indigo-600">
+                                        <ChevronRight size={20} />
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-2 pl-4 border-l-2 border-indigo-100 dark:border-slate-700 ml-6">
+                                    {tripDay.activities?.sort((a,b) => (a.time || '').localeCompare(b.time || '')).map((act, idx) => (
+                                        <div key={idx} className="flex items-start gap-3 relative py-1">
+                                            <div className="absolute -left-[21px] top-2.5 w-2.5 h-2.5 rounded-full bg-indigo-400 ring-2 ring-white dark:ring-slate-800"></div>
+                                            <span className="text-xs font-bold font-mono text-slate-400 min-w-[40px]">{act.time}</span>
+                                            <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{act.title}</span>
+                                        </div>
+                                    ))}
+                                    {(!tripDay.activities || tripDay.activities.length === 0) && <span className="text-xs text-slate-400 italic pl-2">Free day</span>}
+                                </div>
+                            </div>
                         );
                     })}
+                    
+                    {/* Fallback if no days found (e.g. trip starts next month) */}
+                     {days.filter(d => d && tripDayMap[d.toISOString().split('T')[0]]).length === 0 && (
+                        <div className="text-center py-10 text-slate-400">
+                            <CalendarIcon size={48} className="mx-auto mb-2 opacity-20" />
+                            <p>No itinerary days in this month.</p>
+                        </div>
+                    )}
                 </div>
+
              </div>
         </div>
     );
@@ -929,8 +995,14 @@ export default function TravelApp() {
 
     const trip = trips.find(t => t.id === currentTripId);
     
-    // WEATHER LOGIC UPDATE: Use Trip Coordinates
-    const weatherData = useWeather(trip?.lat || 22.3193, trip?.lon || 114.1694);
+    // WEATHER LOGIC UPDATE: Use Trip Start Date and Length
+    // Pass startDate and length to hook so it fetches the correct range for the trip
+    const weatherData = useWeather(
+        trip?.lat || 22.3193, 
+        trip?.lon || 114.1694, 
+        trip?.startDate,
+        trip?.days?.length || 7
+    );
 
     const updateTrip = (updates) => { setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); };
     
@@ -997,12 +1069,44 @@ export default function TravelApp() {
         // Auto-save useEffect will handle the persistence
     };
 
+    // --- SMART ADD DAY (DETECT DATE) ---
+    const handleAddDay = () => {
+        // Find the last day in the itinerary
+        const lastDay = trip.days[trip.days.length - 1];
+        let nextDate = new Date();
+        let nextTitle = `Day ${trip.days.length + 1}`;
+
+        if (lastDay && lastDay.date) {
+            // Parse the last day's date and add 1 day
+            const lastDateObj = new Date(lastDay.date);
+            lastDateObj.setDate(lastDateObj.getDate() + 1);
+            nextDate = lastDateObj;
+        }
+
+        // Format back to YYYY-MM-DD for consistency
+        const dateStr = nextDate.toISOString().split('T')[0];
+        
+        const newDay = { 
+            id: Math.random().toString(36).substr(2, 9), 
+            date: dateStr, 
+            title: nextTitle, 
+            activities: [] 
+        };
+        
+        // Update state
+        updateTrip({ days: [...trip.days, newDay] });
+    };
+
     const handleDeleteDay = (idx) => {
         if (trip.days.length <= 1) return alert("You must have at least one day.");
         if (confirm(`Delete Day ${idx + 1}?`)) {
             const newDays = trip.days.filter((_, i) => i !== idx);
             updateTrip({ days: newDays });
-            if (activeDayIdx >= newDays.length) setActiveDayIdx(newDays.length - 1);
+            
+            // Fix active index if we deleted the last one or the current one
+            if (activeDayIdx >= newDays.length) {
+                setActiveDayIdx(newDays.length - 1);
+            }
         }
     };
 
@@ -1318,7 +1422,7 @@ export default function TravelApp() {
                             </div>
                         ))}
                          {isEditMode && (
-                            <button onClick={() => updateTrip({ days: [...trip.days, { id: Math.random().toString(36), date: '2026-01-01', title: 'New Day', activities: [] }] })} className="px-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-colors"><Plus size={20} /></button>
+                            <button onClick={handleAddDay} className="px-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-colors"><Plus size={20} /></button>
                         )}
                     </div>
 
