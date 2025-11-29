@@ -8,7 +8,7 @@ import {
   DollarSign, BarChart3, User, LogOut, Share2, Download, CloudRain,
   Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy,
   Globe, Search, Menu as MenuIcon, LayoutGrid, MoreVertical, LayoutList,
-  Wand2, ImagePlus, Pencil, Clock, RefreshCw
+  Wand2, ImagePlus, Pencil, Clock, RefreshCw, WifiOff, History
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -212,48 +212,60 @@ const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption,
     );
 };
 
-// --- UPDATED WEATHER HOOK (MOBILE CACHE FIX) ---
+// --- SMART WEATHER HOOK (Forecast + Historical Fallback) ---
 const useWeather = (lat, lon, startDate, daysCount = 7) => {
     const [weatherData, setWeatherData] = useState({});
+    const [isError, setIsError] = useState(false);
+    const [isHistorical, setIsHistorical] = useState(false);
     
     useEffect(() => {
         if (!lat || !lon) return;
 
         const fetchWeather = async () => {
+            setIsError(false);
+            setIsHistorical(false);
             try {
-                // Determine start date (default to today if null)
-                const start = new Date(startDate || new Date());
-                const end = new Date(start);
+                // Parse dates
+                const startStr = startDate || new Date().toISOString().split('T')[0];
+                const startObj = new Date(startStr);
+                const today = new Date();
                 
-                // Add extra buffer days to handle timezone shifts and ensure coverage
-                // We add 1 extra day to be safe
-                end.setDate(end.getDate() + (daysCount > 1 ? daysCount : 7) + 1); 
-
-                const startStr = start.toISOString().split('T')[0];
-                const endStr = end.toISOString().split('T')[0];
-
-                // Retry Logic & CACHE BUSTING
-                let response = null;
-                let attempts = 0;
-                const maxAttempts = 5;
-                let delay = 1000;
+                // Calculate difference in days to determine if we can forecast
+                const diffTime = startObj - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
                 
-                while (attempts < maxAttempts) {
-                    try {
-                        // Added '&t=' + Date.now() to force new fetch on mobile networks that cache aggressively
-                        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${startStr}&end_date=${endStr}&t=${Date.now()}`;
-                        response = await fetch(url);
-                        if (response.ok) break;
-                    } catch (e) { 
-                        // console.error("Attempt failed", e); 
-                    }
+                // End date buffer
+                const endObj = new Date(startObj);
+                endObj.setDate(endObj.getDate() + (daysCount > 1 ? daysCount : 7) + 2);
+                
+                let url = "";
+                let shouldUseHistorical = false;
 
-                    attempts++;
-                    if (attempts < maxAttempts) {
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                        delay *= 2; 
-                    }
+                // Open-Meteo only forecasts ~14-16 days out. 
+                // If trip is further than 14 days, or in the past, use Historical Data (from last year) as estimation.
+                if (diffDays > 14 || diffDays < -5) {
+                    shouldUseHistorical = true;
+                    // Shift dates to 1 year ago for estimation
+                    const pastStart = new Date(startObj);
+                    pastStart.setFullYear(pastStart.getFullYear() - 1);
+                    const pastEnd = new Date(endObj);
+                    pastEnd.setFullYear(pastEnd.getFullYear() - 1);
+                    
+                    const pStartStr = pastStart.toISOString().split('T')[0];
+                    const pEndStr = pastEnd.toISOString().split('T')[0];
+                    
+                    url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${pStartStr}&end_date=${pEndStr}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&t=${Date.now()}`;
+                } else {
+                     // Standard Forecast
+                     const fStartStr = startObj.toISOString().split('T')[0];
+                     const fEndStr = endObj.toISOString().split('T')[0];
+                     url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${fStartStr}&end_date=${fEndStr}&t=${Date.now()}`;
                 }
+
+                let response = null;
+                try {
+                    response = await fetch(url);
+                } catch(e) { console.error("Fetch failed", e); }
 
                 if (!response || !response.ok) throw new Error("Weather API failed");
 
@@ -261,47 +273,67 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                 const weatherMap = {};
                 if (data.daily) {
                     data.daily.time.forEach((time, index) => {
-                        weatherMap[time] = {
+                        // If historical, map the past date back to the requested future date string
+                        // This is tricky, simplified: we rely on index matching if continuous, 
+                        // but safer to just map key-by-key if we shifted exactly 1 year.
+                        let keyDate = time;
+                        if (shouldUseHistorical) {
+                             // Reconstruct the future date string from the past date
+                             const d = new Date(time);
+                             d.setFullYear(d.getFullYear() + 1);
+                             keyDate = d.toISOString().split('T')[0];
+                        }
+                        
+                        weatherMap[keyDate] = {
                             max: data.daily.temperature_2m_max[index],
                             min: data.daily.temperature_2m_min[index],
                             code: data.daily.weathercode[index]
                         };
                     });
                 }
+                
                 setWeatherData(weatherMap);
+                setIsHistorical(shouldUseHistorical);
+
             } catch (error) { 
                 console.error("Weather fetch failed", error);
-                // Don't clear old data on error to prevent flashing, just keep what we have
+                setIsError(true);
             }
         };
         fetchWeather();
-    }, [lat, lon, startDate, daysCount]); // Re-fetch if these change
-    return weatherData;
+    }, [lat, lon, startDate, daysCount]); 
+    
+    return { weatherData, isError, isHistorical };
 };
 
-const WeatherDisplay = ({ date, weatherData }) => {
+const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     const realWeather = weatherData[date];
     let Icon = Sun;
     let tempText = "Loading...";
+    let textClass = "text-slate-400";
     
     if (realWeather) {
         if (realWeather.code > 3) Icon = CloudIcon;
         if (realWeather.code > 50) Icon = CloudRain;
+        // If historical, we might show "Est."
         tempText = `${Math.round(realWeather.min)}°/${Math.round(realWeather.max)}°`;
     } else {
-        // If weatherData is empty, we are probably fetching
-        if (Object.keys(weatherData).length === 0) {
+        if (isError) {
+             Icon = WifiOff;
+             tempText = "Offline";
+             textClass = "text-red-400";
+        } else if (Object.keys(weatherData).length === 0) {
             Icon = Loader2;
             tempText = "Fetching";
         } else {
-             // We have data but not for this date (out of range/error)
              Icon = CalendarIcon;
              tempText = "--";
         }
     }
 
     return (
-        <div className="flex items-center text-xs font-medium text-slate-400 mt-1 min-h-[16px]">
+        <div className={`flex items-center text-xs font-medium ${textClass} mt-1 min-h-[16px]`}>
+             {isHistorical && realWeather && <span className="mr-1 text-[8px] uppercase font-bold tracking-wider opacity-70">Est.</span>}
             <Icon size={12} className={`mr-1 ${tempText === 'Fetching' ? 'animate-spin' : ''}`} /> {tempText}
         </div>
     );
@@ -899,15 +931,35 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
 export default function TravelApp() {
     const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
-    
     const [trips, setTrips] = useState([]);
-    const [currentTripId, setCurrentTripId] = useState(null);
-    const [view, setView] = useState('dashboard'); // 'dashboard' | 'trip'
+    
+    // -- LOCAL STORAGE PERSISTENCE --
+    // Lazy initialize state from localStorage to prevent flash of wrong theme/view
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('theme') === 'dark';
+        }
+        return false;
+    });
+
+    const [currentTripId, setCurrentTripId] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('currentTripId');
+        }
+        return null;
+    });
+
+    const [view, setView] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('view') || 'dashboard';
+        }
+        return 'dashboard';
+    });
+
     const [activeDayIdx, setActiveDayIdx] = useState(0);
     const [isEditMode, setIsEditMode] = useState(false);
     const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'budget' | 'calendar'
     const [modalOpen, setModalOpen] = useState(null);
-    const [isDarkMode, setIsDarkMode] = useState(false);
     const [embeddedMaps, setEmbeddedMaps] = useState({});
     const [isMapOpen, setIsMapOpen] = useState(false); // Map sidebar toggle
     const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
@@ -948,6 +1000,22 @@ export default function TravelApp() {
         return () => unsub(); 
     }, []);
 
+    // Local Storage Effects
+    useEffect(() => {
+        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    }, [isDarkMode]);
+
+    useEffect(() => {
+        if (currentTripId) {
+            localStorage.setItem('currentTripId', currentTripId);
+        }
+    }, [currentTripId]);
+
+    useEffect(() => {
+        localStorage.setItem('view', view);
+    }, [view]);
+
+
     // RESET STATE ON LOGOUT/USER CHANGE TO PREVENT UI LEAKS (FIX FOR BUG #1)
     useEffect(() => {
         if (!user) {
@@ -960,6 +1028,9 @@ export default function TravelApp() {
             // Trips will be cleared by the snapshot listener returning nothing or unmounting
             setTrips([]);
             setIsDataLoaded(false);
+            // Clear trip persistence on logout
+            localStorage.removeItem('currentTripId');
+            localStorage.removeItem('view');
         }
     }, [user]);
 
@@ -970,8 +1041,9 @@ export default function TravelApp() {
                 const data = doc.data();
                 setTrips(data.allTrips || []);
                 // If we are in trip view, ensure current ID is valid or fallback
-                if (view === 'trip' && !data.allTrips.find(t => t.id === currentTripId)) {
+                if (view === 'trip' && currentTripId && !data.allTrips.find(t => t.id === currentTripId)) {
                    setView('dashboard');
+                   setCurrentTripId(null);
                 }
             } else {
                 // Initialize EMPTY trip list for new users (FIX FOR BUG #1 PART 2)
@@ -1007,11 +1079,11 @@ export default function TravelApp() {
     const trip = trips.find(t => t.id === currentTripId);
     
     // WEATHER LOGIC UPDATE: Use Trip Start Date and Length
-    // Pass startDate and length to hook so it fetches the correct range for the trip
-    const weatherData = useWeather(
+    // Pass startDate string DIRECTLY to avoid timezone issues
+    const { weatherData, isError: weatherError, isHistorical } = useWeather(
         trip?.lat || 22.3193, 
         trip?.lon || 114.1694, 
-        trip?.startDate,
+        trip?.startDate, // Passing string directly
         trip?.days?.length || 7
     );
 
@@ -1312,7 +1384,7 @@ export default function TravelApp() {
                 
                 {/* Navbar (UNCLUTTERED & RESPONSIVE) */}
                 <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
-                      <Logo size="sm" onClick={() => setView('dashboard')} />
+                      <Logo size="sm" onClick={() => { setView('dashboard'); setCurrentTripId(null); }} />
                       
                       <div className="flex gap-2 relative">
                         {/* Always visible icons */}
@@ -1423,7 +1495,7 @@ export default function TravelApp() {
                                 <button onClick={() => setActiveDayIdx(idx)} className={`relative flex-shrink-0 px-5 py-2.5 rounded-xl transition-all duration-300 flex flex-col items-center min-w-[120px] ${activeDayIdx === idx ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Day {idx + 1}</span>
                                     <span className="text-sm font-semibold truncate max-w-[120px]">{day.date.split('-').slice(1).join('/')}</span>
-                                    <WeatherDisplay date={day.date} weatherData={weatherData} />
+                                    <WeatherDisplay date={day.date} weatherData={weatherData} isError={weatherError} isHistorical={isHistorical} />
                                 </button>
                                 {isEditMode && (
                                     <button onClick={(e) => { e.stopPropagation(); handleDeleteDay(idx); }} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 opacity-0 group-hover/day:opacity-100 transition-opacity z-50">
@@ -1884,4 +1956,4 @@ export default function TravelApp() {
             </Modal>
         </div>
     );
-      }
+                  }
