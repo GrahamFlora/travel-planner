@@ -1,14 +1,65 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
-  Calendar as CalendarIcon, MapPin, GripVertical, Plus, 
-  Trash2, X, Moon, Sun, Cloud as CloudIcon, CloudDrizzle, 
-  Settings, Wallet, TrendingUp, TrendingDown, Lock, Unlock,
-  ChevronRight, Map, List, Filter, Camera, ChevronDown, Landmark,
-  AlertTriangle, Check, Loader2, Plane, ShoppingBag, Coffee, Star, 
-  DollarSign, BarChart3, User, LogOut, Share2, Download, CloudRain,
-  Utensils, Bed, Bus, Tag, Music, Gift, Zap, Home, ArrowLeft, Copy,
-  Globe, Search, Menu as MenuIcon, LayoutGrid, MoreVertical, LayoutList,
-  Wand2, ImagePlus, Pencil, Clock, RefreshCw, WifiOff, History
+  Calendar as CalendarIcon, 
+  MapPin, 
+  GripVertical, 
+  Plus, 
+  Trash2, 
+  X, 
+  Moon, 
+  Sun, 
+  Cloud as CloudIcon, 
+  CloudDrizzle, 
+  Settings, 
+  Wallet, 
+  TrendingUp, 
+  TrendingDown, 
+  Lock, 
+  Unlock,
+  ChevronRight, 
+  Map, 
+  List, 
+  Filter, 
+  Camera, 
+  ChevronDown, 
+  Landmark,
+  AlertTriangle, 
+  Check, 
+  Loader2, 
+  Plane, 
+  ShoppingBag, 
+  Coffee, 
+  Star, 
+  DollarSign, 
+  BarChart3, 
+  User, 
+  LogOut, 
+  Share2, 
+  Download, 
+  CloudRain,
+  Utensils, 
+  Bed, 
+  Bus, 
+  Tag, 
+  Music, 
+  Gift, 
+  Zap, 
+  Home, 
+  ArrowLeft, 
+  Copy,
+  Globe, 
+  Search, 
+  Menu as MenuIcon, 
+  LayoutGrid, 
+  MoreVertical, 
+  LayoutList,
+  Wand2, 
+  ImagePlus, 
+  Pencil, 
+  Clock, 
+  RefreshCw, 
+  WifiOff, 
+  History
 } from 'lucide-react';
 
 // --- FIREBASE IMPORTS ---
@@ -24,7 +75,12 @@ import {
     updateProfile
 } from "firebase/auth";
 import { 
-    getFirestore, doc, setDoc, getDoc, onSnapshot, collection, 
+    getFirestore, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    onSnapshot, 
+    collection, 
     enableIndexedDbPersistence 
 } from "firebase/firestore";
 
@@ -39,7 +95,6 @@ const firebaseConfig = {
     measurementId: "G-ZRD0VRVVQ6"
 };
 
-// Use global variable for appId if available (Robust pattern)
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
@@ -48,31 +103,49 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- 1. OFFLINE PERSISTENCE SETUP ---
+// --- OFFLINE PERSISTENCE ---
 try {
     enableIndexedDbPersistence(db).catch((err) => {
         if (err.code == 'failed-precondition') {
-            console.warn("Offline persistence failed: Multiple tabs open");
+            console.warn("Persistence failed: Multiple tabs open");
         } else if (err.code == 'unimplemented') {
-            console.warn("Offline persistence not supported by browser");
+            console.warn("Persistence not supported by browser");
         }
     });
-} catch (e) {
-    console.warn("Persistence initialization error:", e);
+} catch (e) { 
+    console.warn("Persistence init error:", e); 
 }
 
-// --- FIRESTORE PATH HELPERS ---
-const getUserTripRef = (userId) => doc(db, 'artifacts', appId, 'users', userId, 'trip', 'data');
-const getUserBudgetRef = (userId) => doc(db, 'artifacts', appId, 'users', userId, 'budget', 'data');
-const getSharedTripRef = (shareCode) => doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', shareCode);
-
-// --- GLOBAL HELPERS ---
-const EXCHANGE_RATES = {
-    USD: 1.0, PHP: 58.75, HKD: 7.83, EUR: 0.92, JPY: 155.0, GBP: 0.80, MOP: 8.01,
-    SGD: 1.35, THB: 36.5, KRW: 1380, CNY: 7.23, AUD: 1.52, CAD: 1.37
+// --- FIRESTORE HELPERS ---
+const getUserTripRef = (userId) => {
+    return doc(db, 'artifacts', appId, 'users', userId, 'trip', 'data');
 };
 
-// Updated Currency Options
+const getUserBudgetRef = (userId) => {
+    return doc(db, 'artifacts', appId, 'users', userId, 'budget', 'data');
+};
+
+const getSharedTripRef = (shareCode) => {
+    return doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', shareCode);
+};
+
+// --- DATA CONSTANTS ---
+const EXCHANGE_RATES = {
+    USD: 1.0, 
+    PHP: 58.75, 
+    HKD: 7.83, 
+    EUR: 0.92, 
+    JPY: 155.0, 
+    GBP: 0.80, 
+    MOP: 8.01,
+    SGD: 1.35, 
+    THB: 36.5, 
+    KRW: 1380, 
+    CNY: 7.23, 
+    AUD: 1.52, 
+    CAD: 1.37
+};
+
 const CURRENCY_OPTIONS = [
     { code: 'PHP', name: 'Philippine Peso', symbol: '₱', countryCode: 'ph' },
     { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$', countryCode: 'hk' },
@@ -88,9 +161,9 @@ const CURRENCY_OPTIONS = [
     { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', countryCode: 'au' },
     { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$', countryCode: 'ca' },
 ];
+
 const BASE_CURRENCY = 'HKD'; 
 
-// Pre-defined Countries
 const COUNTRY_DATA = [
     { name: 'Hong Kong', lat: 22.3193, lon: 114.1694, countryCode: 'hk' },
     { name: 'Macau', lat: 22.1987, lon: 113.5439, countryCode: 'mo' },
@@ -112,19 +185,33 @@ const COUNTRY_DATA = [
     { name: 'Canada (Toronto)', lat: 43.6510, lon: -79.3470, countryCode: 'ca' },
 ];
 
-const getFlagUrl = (code) => `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
+const CATEGORY_ICONS = [
+    { id: 'food', icon: Utensils, label: 'Food' },
+    { id: 'transport', icon: Bus, label: 'Transport' },
+    { id: 'flight', icon: Plane, label: 'Flight' },
+    { id: 'attraction', icon: Star, label: 'Activity' },
+    { id: 'shopping', icon: ShoppingBag, label: 'Shopping' },
+    { id: 'accommodation', icon: Bed, label: 'Hotel' },
+    { id: 'entertainment', icon: Music, label: 'Fun' },
+    { id: 'gift', icon: Gift, label: 'Gift' },
+    { id: 'other', icon: Tag, label: 'Other' },
+];
+
+// --- UTILITY FUNCTIONS ---
+
+const getFlagUrl = (code) => {
+    return `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
+};
 
 const formatCurrency = (amount, currencyCode) => {
     const currency = CURRENCY_OPTIONS.find(c => c.code === currencyCode) || { symbol: currencyCode };
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currencyCode,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
+    return new Intl.NumberFormat('en-US', { 
+        style: 'currency', 
+        currency: currencyCode, 
+        minimumFractionDigits: 2 
     }).format(amount);
 };
 
-// Helper to compress image to base64 for Firestore storage (Limit 1MB)
 const compressImage = async (file) => {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -134,7 +221,7 @@ const compressImage = async (file) => {
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 150; // Thumbnail size
+                const MAX_WIDTH = 150; 
                 const scaleSize = MAX_WIDTH / img.width;
                 canvas.width = MAX_WIDTH;
                 canvas.height = img.height * scaleSize;
@@ -155,6 +242,7 @@ const getTypeColor = (type) => {
     default: return 'border-slate-200 text-slate-600 bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
   }
 };
+
 const getTypeIcon = (type) => {
     switch (type) {
       case 'food': return <Coffee size={12} className="mr-1" />;
@@ -165,12 +253,12 @@ const getTypeIcon = (type) => {
     }
 };
 
-// --- CUSTOM SELECT COMPONENT ---
-const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption, renderValue }) => {
+// --- CUSTOM UI COMPONENTS ---
+
+const CustomIconSelect = ({ options, value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
 
-    // Close on click outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (containerRef.current && !containerRef.current.contains(event.target)) {
@@ -190,20 +278,28 @@ const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption,
                 onClick={() => setIsOpen(!isOpen)}
                 className="w-full h-12 bg-slate-100 dark:bg-slate-700 rounded-xl px-4 flex items-center justify-between outline-none border border-transparent focus:border-indigo-500 transition-all text-slate-900 dark:text-white"
             >
-                {selectedOption ? (renderValue ? renderValue(selectedOption) : selectedOption.label) : <span className="text-slate-400">{placeholder}</span>}
+                {selectedOption ? (
+                    <div className="flex items-center gap-2">
+                        <img src={selectedOption.icon} alt={selectedOption.label} className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
+                        <span className="font-bold">{selectedOption.label}</span>
+                    </div>
+                ) : (
+                    <span className="text-slate-400">{placeholder}</span>
+                )}
                 <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             
             {isOpen && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
                     {options.map((opt) => (
-                        <button
-                            key={opt.value}
-                            type="button"
-                            onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                        <button 
+                            key={opt.value} 
+                            type="button" 
+                            onClick={() => { onChange(opt.value); setIsOpen(false); }} 
                             className={`w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors ${value === opt.value ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}
                         >
-                            {renderOption ? renderOption(opt) : opt.label}
+                            <img src={opt.icon} alt="" className="w-6 h-4 object-cover rounded-sm shadow-sm" />
+                            <span className="font-bold">{opt.label}</span>
                         </button>
                     ))}
                 </div>
@@ -212,7 +308,106 @@ const CustomIconSelect = ({ options, value, onChange, placeholder, renderOption,
     );
 };
 
-// --- SMART WEATHER HOOK (Forecast + Historical Fallback) ---
+const IconPicker = ({ selected, onSelect }) => (
+    <div className="grid grid-cols-5 gap-2">
+        {CATEGORY_ICONS.map(({ id, icon: Icon, label }) => (
+            <button 
+                key={id} 
+                type="button" 
+                onClick={() => onSelect(id)} 
+                className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${selected === id ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+            >
+                <Icon size={20} />
+                <span className="text-[10px] mt-1 font-medium truncate w-full text-center">{label}</span>
+            </button>
+        ))}
+    </div>
+);
+
+const Toast = ({ message, onClose }) => (
+  <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[80] animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border border-slate-700">
+    <div className="bg-emerald-500 rounded-full p-1 text-black">
+        <Check size={12} strokeWidth={4} />
+    </div>
+    <span className="font-bold text-sm">{message}</span>
+  </div>
+);
+
+const Logo = ({ size = "md", onClick }) => {
+    const dim = size === "lg" ? "w-16 h-16" : "w-8 h-8";
+    const txt = size === "lg" ? "text-3xl" : "text-xl";
+    return (
+        <button 
+            onClick={onClick} 
+            className={`flex items-center gap-3 ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+        >
+            <div className={`${dim} bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 transform rotate-3`}>
+                <Plane className="text-white transform -rotate-3" size={size === "lg" ? 32 : 18} />
+            </div>
+            <span className={`font-black tracking-tight text-slate-900 dark:text-white ${txt}`}>
+                Horizon<span className="text-indigo-500">Planner</span>
+            </span>
+        </button>
+    );
+};
+
+const LoginPage = ({ onLogin }) => {
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [toastMsg, setToastMsg] = useState(null);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError(null);
+        try {
+            if (isSignUp) {
+                await createUserWithEmailAndPassword(auth, email, password);
+                await signOut(auth); 
+                setToastMsg("Sign up successful! You can now sign in.");
+                setIsSignUp(false);
+            } else {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                onLogin(userCredential.user);
+            }
+        } catch (err) { 
+            setError(err.message.replace('Firebase: ', '')); 
+        } finally { 
+            setLoading(false); 
+        }
+    };
+
+    useEffect(() => {
+        if(toastMsg) { 
+            const timer = setTimeout(() => setToastMsg(null), 4000); 
+            return () => clearTimeout(timer); 
+        }
+    }, [toastMsg]);
+
+    return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+            {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
+            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300">
+                <div className="flex justify-center mb-8"><Logo size="lg" /></div>
+                <h2 className="text-2xl font-bold text-center mb-2 text-slate-900 dark:text-white">{isSignUp ? "Create your account" : "Welcome back"}</h2>
+                <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">{isSignUp ? "Start planning your next adventure." : "Enter your details to access your trips."}</p>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 text-xs rounded-xl flex items-center gap-2"><AlertTriangle size={14} /> {error}</div>}
+                    <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Email</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="you@example.com" /></div>
+                    <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Password</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="••••••••" /></div>
+                    <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">{loading && <Loader2 className="animate-spin" size={20} />} {isSignUp ? "Sign Up" : "Sign In"}</button>
+                </form>
+                <div className="mt-6 text-center"><button onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">{isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}</button></div>
+            </div>
+        </div>
+    );
+};
+
+// --- HOOKS ---
+
 const useWeather = (lat, lon, startDate, daysCount = 7) => {
     const [weatherData, setWeatherData] = useState({});
     const [isError, setIsError] = useState(false);
@@ -225,27 +420,24 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
             setIsError(false);
             setIsHistorical(false);
             try {
-                // Parse dates
                 const startStr = startDate || new Date().toISOString().split('T')[0];
                 const startObj = new Date(startStr);
                 const today = new Date();
                 
-                // Calculate difference in days to determine if we can forecast
+                // Determine if we need historical or forecast data
                 const diffTime = startObj - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
                 
-                // End date buffer
                 const endObj = new Date(startObj);
                 endObj.setDate(endObj.getDate() + (daysCount > 1 ? daysCount : 7) + 2);
                 
                 let url = "";
                 let shouldUseHistorical = false;
 
-                // Open-Meteo only forecasts ~14-16 days out. 
-                // If trip is further than 14 days, or in the past, use Historical Data (from last year) as estimation.
+                // Thresholds for API capability
                 if (diffDays > 14 || diffDays < -5) {
                     shouldUseHistorical = true;
-                    // Shift dates to 1 year ago for estimation
+                    // Shift dates to 1 year ago
                     const pastStart = new Date(startObj);
                     pastStart.setFullYear(pastStart.getFullYear() - 1);
                     const pastEnd = new Date(endObj);
@@ -262,23 +454,17 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                      url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${fStartStr}&end_date=${fEndStr}&t=${Date.now()}`;
                 }
 
-                let response = null;
-                try {
-                    response = await fetch(url);
-                } catch(e) { console.error("Fetch failed", e); }
-
-                if (!response || !response.ok) throw new Error("Weather API failed");
-
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Weather API failed");
+                
                 const data = await response.json();
                 const weatherMap = {};
+                
                 if (data.daily) {
                     data.daily.time.forEach((time, index) => {
-                        // If historical, map the past date back to the requested future date string
-                        // This is tricky, simplified: we rely on index matching if continuous, 
-                        // but safer to just map key-by-key if we shifted exactly 1 year.
                         let keyDate = time;
                         if (shouldUseHistorical) {
-                             // Reconstruct the future date string from the past date
+                             // Reconstruct future date from past date
                              const d = new Date(time);
                              d.setFullYear(d.getFullYear() + 1);
                              keyDate = d.toISOString().split('T')[0];
@@ -306,6 +492,8 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
     return { weatherData, isError, isHistorical };
 };
 
+// --- DISPLAY COMPONENTS ---
+
 const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     const realWeather = weatherData[date];
     let Icon = Sun;
@@ -315,7 +503,6 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     if (realWeather) {
         if (realWeather.code > 3) Icon = CloudIcon;
         if (realWeather.code > 50) Icon = CloudRain;
-        // If historical, we might show "Est."
         tempText = `${Math.round(realWeather.min)}°/${Math.round(realWeather.max)}°`;
     } else {
         if (isError) {
@@ -339,135 +526,6 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     );
 };
 
-// --- COMPONENTS ---
-
-const Toast = ({ message, onClose }) => (
-  <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[80] animate-in fade-in slide-in-from-top-4 flex items-center gap-3 border border-slate-700">
-    <div className="bg-emerald-500 rounded-full p-1 text-black"><Check size={12} strokeWidth={4} /></div>
-    <span className="font-bold text-sm">{message}</span>
-  </div>
-);
-
-const Logo = ({ size = "md", onClick }) => {
-    const dim = size === "lg" ? "w-16 h-16" : "w-8 h-8";
-    const txt = size === "lg" ? "text-3xl" : "text-xl";
-    return (
-        <button onClick={onClick} className={`flex items-center gap-3 ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}>
-            <div className={`${dim} bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 transform rotate-3`}>
-                <Plane className="text-white transform -rotate-3" size={size === "lg" ? 32 : 18} />
-            </div>
-            <span className={`font-black tracking-tight text-slate-900 dark:text-white ${txt}`}>
-                Horizon<span className="text-indigo-500">Planner</span>
-            </span>
-        </button>
-    );
-};
-
-const LoginPage = ({ onLogin }) => {
-    const [isSignUp, setIsSignUp] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [toastMsg, setToastMsg] = useState(null);
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        try {
-            if (isSignUp) {
-                await createUserWithEmailAndPassword(auth, email, password);
-                await signOut(auth); // Sign out immediately to force login flow as requested
-                setToastMsg("Sign up successful! You can now sign in.");
-                setIsSignUp(false); // Switch to login view
-            } else {
-                const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                onLogin(userCredential.user);
-            }
-        } catch (err) {
-            setError(err.message.replace('Firebase: ', ''));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if(toastMsg) {
-            const timer = setTimeout(() => setToastMsg(null), 4000);
-            return () => clearTimeout(timer);
-        }
-    }, [toastMsg]);
-
-    return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-            {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
-            
-            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300">
-                <div className="flex justify-center mb-8"><Logo size="lg" /></div>
-                
-                <h2 className="text-2xl font-bold text-center mb-2 text-slate-900 dark:text-white">
-                    {isSignUp ? "Create your account" : "Welcome back"}
-                </h2>
-                <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">
-                    {isSignUp ? "Start planning your next adventure." : "Enter your details to access your trips."}
-                </p>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {error && (
-                        <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 text-xs rounded-xl flex items-center gap-2">
-                            <AlertTriangle size={14} /> {error}
-                        </div>
-                    )}
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase">Email</label>
-                        <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="you@example.com" />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase">Password</label>
-                        <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="••••••••" />
-                    </div>
-                    
-                    <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">
-                        {loading && <Loader2 className="animate-spin" size={20} />}
-                        {isSignUp ? "Sign Up" : "Sign In"}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center">
-                    <button onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">
-                        {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- ICON PICKER & SHARED COMPONENTS ---
-const CATEGORY_ICONS = [
-    { id: 'food', icon: Utensils, label: 'Food' },
-    { id: 'transport', icon: Bus, label: 'Transport' },
-    { id: 'flight', icon: Plane, label: 'Flight' },
-    { id: 'attraction', icon: Star, label: 'Activity' },
-    { id: 'shopping', icon: ShoppingBag, label: 'Shopping' },
-    { id: 'accommodation', icon: Bed, label: 'Hotel' },
-    { id: 'entertainment', icon: Music, label: 'Fun' },
-    { id: 'gift', icon: Gift, label: 'Gift' },
-    { id: 'other', icon: Tag, label: 'Other' },
-];
-
-const IconPicker = ({ selected, onSelect }) => (
-    <div className="grid grid-cols-5 gap-2">
-        {CATEGORY_ICONS.map(({ id, icon: Icon, label }) => (
-            <button key={id} type="button" onClick={() => onSelect(id)} className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all ${selected === id ? 'bg-indigo-600 text-white shadow-lg scale-105' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
-                <Icon size={20} />
-                <span className="text-[10px] mt-1 font-medium truncate w-full text-center">{label}</span>
-            </button>
-        ))}
-    </div>
-);
-
 const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
   if (!isOpen) return null;
   return (
@@ -475,7 +533,9 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
       <div className={`bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full ${maxWidth} overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200`}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
           <h3 className="font-bold text-lg text-slate-900 dark:text-white">{title}</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-600"><X size={20} /></button>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
         </div>
         <div className="p-6 overflow-y-auto custom-scrollbar">{children}</div>
       </div>
@@ -493,7 +553,9 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions })
     return (
         <div className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center transition-all hover:shadow-md`}>
             <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-full ${isEditMode ? 'bg-red-50 text-red-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}><Icon size={18} /></div>
+                <div className={`p-2 rounded-full ${isEditMode ? 'bg-red-50 text-red-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
+                    <Icon size={18} />
+                </div>
                 <div>
                     <p className="font-bold text-slate-900 dark:text-white text-sm md:text-base">{expense.name}</p>
                     <p className="text-xs text-slate-500 capitalize">{catObj.label}</p>
@@ -506,14 +568,20 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions })
                 </p>
                 {isEditMode && (
                     <div className="flex gap-1">
-                        <button onClick={(e) => { e.stopPropagation(); onEdit(expense); }} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors"><Pencil size={16} /></button>
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(expense.id); }} className="p-2 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); onEdit(expense); }} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors">
+                            <Pencil size={16} />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); onDelete(expense.id); }} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                            <Trash2 size={16} />
+                        </button>
                     </div>
                 )}
             </div>
         </div>
     );
 };
+
+// --- FORMS ---
 
 const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialData }) => {
     const [name, setName] = useState('');
@@ -522,7 +590,6 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
     const [inputCurrencyCode, setInputCurrencyCode] = useState(BASE_CURRENCY);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-    // Load initial data if editing
     useEffect(() => {
         if (initialData) {
             setName(initialData.name || '');
@@ -536,98 +603,117 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!name || !amountInput) return;
+        
         const amountBase = convertToBase(Number(amountInput), inputCurrencyCode);
-        onAddExpense({
-            id: initialData ? initialData.id : Math.random().toString(36).substr(2, 9), // Keep ID if editing
-            name,
+        
+        onAddExpense({ 
+            id: initialData ? initialData.id : Math.random().toString(36).substr(2, 9), 
+            name, 
             amount: amountBase, 
             amountInput: Number(amountInput), 
-            inputCurrencyCode,
+            inputCurrencyCode, 
             category, 
             type: 'expense', 
-            date
+            date 
         });
-        if (!initialData) {
-             setName(''); setAmountInput(''); // Only clear if adding new
+        
+        if (!initialData) { 
+            setName(''); 
+            setAmountInput(''); 
         }
     };
+    
     const inputCurrencySymbol = currencyOptions.find(c => c.code === inputCurrencyCode)?.symbol || '';
-
-    // Prepare options for CustomSelect
-    const selectOptions = currencyOptions.map(c => ({
-        value: c.code,
-        label: c.code,
-        icon: getFlagUrl(c.countryCode)
+    const selectOptions = currencyOptions.map(c => ({ 
+        value: c.code, 
+        label: c.code, 
+        icon: getFlagUrl(c.countryCode) 
     }));
 
     return (
         <form onSubmit={handleSubmit} className="p-4 md:p-6 bg-white dark:bg-slate-800 rounded-2xl space-y-4">
             <h3 className="text-lg font-bold dark:text-white">{initialData ? 'Edit Expense' : 'Log Expense'}</h3>
-            <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Description</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" placeholder="e.g. Dinner" required/></div>
+            
+            <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400 uppercase">Description</label>
+                <input 
+                    type="text" 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)} 
+                    className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" 
+                    placeholder="e.g. Dinner" 
+                    required
+                />
+            </div>
             
             <div className="grid grid-cols-3 gap-3">
                  <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-400 uppercase">Currency</label>
                     <CustomIconSelect 
-                        options={selectOptions}
-                        value={inputCurrencyCode}
-                        onChange={setInputCurrencyCode}
-                        placeholder="Select"
-                        renderValue={(opt) => (
-                            <div className="flex items-center gap-2 justify-center w-full">
-                                <img src={opt.icon} alt="" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
-                                <span className="font-bold">{opt.label}</span>
-                            </div>
-                        )}
-                        renderOption={(opt) => (
-                            <div className="flex items-center gap-3">
-                                <img src={opt.icon} alt="" className="w-6 h-4 object-cover rounded-sm shadow-sm" />
-                                <span className="font-bold">{opt.label}</span>
-                            </div>
-                        )}
+                        options={selectOptions} 
+                        value={inputCurrencyCode} 
+                        onChange={setInputCurrencyCode} 
+                        placeholder="Select" 
                     />
                 </div>
                 <div className="space-y-1 col-span-2">
                     <label className="text-xs font-bold text-slate-400 uppercase">Amount</label>
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{inputCurrencySymbol}</span>
-                        <input type="number" step="0.01" value={amountInput} onChange={(e) => setAmountInput(e.target.value)} className="w-full h-12 bg-slate-100 dark:bg-slate-700 rounded-xl pl-14 pr-4 outline-none font-mono font-bold text-lg focus:ring-2 focus:ring-indigo-500 dark:text-white" placeholder="0.00" required/>
+                        {/* PADDING FIX HERE (pl-16) */}
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            value={amountInput} 
+                            onChange={(e) => setAmountInput(e.target.value)} 
+                            className="w-full h-12 bg-slate-100 dark:bg-slate-700 rounded-xl pl-16 pr-4 outline-none font-mono font-bold text-lg focus:ring-2 focus:ring-indigo-500 dark:text-white" 
+                            placeholder="0.00" 
+                            required
+                        />
                     </div>
                 </div>
             </div>
             
-            <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Date</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"/></div>
-            <div className="space-y-2"><label className="text-xs font-bold text-slate-400 uppercase">Category</label><IconPicker selected={category} onSelect={setCategory} /></div>
-            <button type="submit" className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 rounded-xl mt-2 active:scale-95 transition-transform">{initialData ? 'Update Expense' : 'Save Expense'}</button>
+            <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400 uppercase">Date</label>
+                <input 
+                    type="date" 
+                    value={date} 
+                    onChange={(e) => setDate(e.target.value)} 
+                    className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                />
+            </div>
+            
+            <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-400 uppercase">Category</label>
+                <IconPicker selected={category} onSelect={setCategory} />
+            </div>
+            
+            <button 
+                type="submit" 
+                className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 rounded-xl mt-2 active:scale-95 transition-transform"
+            >
+                {initialData ? 'Update Expense' : 'Save Expense'}
+            </button>
         </form>
     );
 };
 
-// --- CALENDAR VIEW COMPONENT (UPDATED RESPONSIVE) ---
+// --- VIEW COMPONENTS ---
+
 const CalendarView = ({ trip, onSelectDay }) => {
     const startDate = new Date(trip.startDate);
     const year = startDate.getFullYear();
     const month = startDate.getMonth();
-    
-    // Get number of days in the month
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const firstDayOfMonth = new Date(year, month, 1).getDay(); 
     
     const days = [];
-    // Add empty placeholders for days before start of month
-    for (let i = 0; i < firstDayOfMonth; i++) {
-        days.push(null);
-    }
-    // Add actual days
-    for (let i = 1; i <= daysInMonth; i++) {
-        days.push(new Date(year, month, i));
-    }
-
-    // Map trip days to dates for highlighting
+    for (let i = 0; i < firstDayOfMonth; i++) { days.push(null); }
+    for (let i = 1; i <= daysInMonth; i++) { days.push(new Date(year, month, i)); }
+    
     const tripDayMap = {};
-    trip.days.forEach((d, idx) => {
-        tripDayMap[d.date] = { ...d, idx };
-    });
+    trip.days.forEach((d, idx) => { tripDayMap[d.date] = { ...d, idx }; });
 
     return (
         <div className="max-w-6xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
@@ -637,47 +723,46 @@ const CalendarView = ({ trip, onSelectDay }) => {
                         {startDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
                     </h2>
                     <div className="flex gap-2">
-                        <span className="text-xs font-bold px-2 py-1 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">Trip Schedule</span>
+                        <span className="text-xs font-bold px-2 py-1 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                            Trip Schedule
+                        </span>
                     </div>
                 </div>
-                
-                {/* --- DESKTOP GRID VIEW (Hidden on Mobile) --- */}
+
+                {/* DESKTOP CALENDAR */}
                 <div className="hidden md:block">
                     <div className="grid grid-cols-7 gap-4 mb-2">
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
                             <div key={d} className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">{d}</div>
                         ))}
                     </div>
-                    
                     <div className="grid grid-cols-7 gap-4 auto-rows-fr">
                         {days.map((date, i) => {
                             if (!date) return <div key={`empty-${i}`} className="aspect-square bg-slate-50/50 dark:bg-slate-800/30 rounded-xl"></div>;
-                            
                             const dateStr = date.toISOString().split('T')[0];
                             const tripDay = tripDayMap[dateStr];
                             const isToday = new Date().toISOString().split('T')[0] === dateStr;
-                            
                             return (
                                 <div 
-                                    key={dateStr}
-                                    onClick={() => tripDay && onSelectDay(tripDay.idx)}
+                                    key={dateStr} 
+                                    onClick={() => tripDay && onSelectDay(tripDay.idx)} 
                                     className={`
-                                        min-h-[140px] rounded-xl p-3 relative flex flex-col items-start justify-start text-sm transition-all border
+                                        min-h-[140px] rounded-xl p-3 relative flex flex-col items-start justify-start text-sm transition-all border 
                                         ${tripDay 
                                             ? 'bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-900/50 shadow-sm hover:shadow-md cursor-pointer group' 
                                             : 'bg-slate-50 dark:bg-slate-800/50 border-transparent text-slate-400 opacity-60'
-                                        }
+                                        } 
                                         ${isToday ? 'ring-2 ring-emerald-500' : ''}
                                     `}
                                 >
-                                    <span className={`font-bold mb-2 ${tripDay ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 w-8 h-8 flex items-center justify-center rounded-full' : ''}`}>{date.getDate()}</span>
-                                    
+                                    <span className={`font-bold mb-2 ${tripDay ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 w-8 h-8 flex items-center justify-center rounded-full' : ''}`}>
+                                        {date.getDate()}
+                                    </span>
                                     {tripDay && (
                                         <div className="w-full space-y-1 overflow-y-auto custom-scrollbar max-h-[100px]">
                                             {tripDay.activities?.map((act, idx) => (
                                                 <div key={idx} className="text-[10px] font-medium bg-slate-100 dark:bg-slate-700/50 p-1.5 rounded truncate text-slate-700 dark:text-slate-300 border-l-2 border-indigo-400">
-                                                    <span className="opacity-70 mr-1">{act.time}</span>
-                                                    {act.title}
+                                                    <span className="opacity-70 mr-1">{act.time}</span>{act.title}
                                                 </div>
                                             ))}
                                             {(!tripDay.activities || tripDay.activities.length === 0) && (
@@ -691,17 +776,18 @@ const CalendarView = ({ trip, onSelectDay }) => {
                     </div>
                 </div>
 
-                {/* --- MOBILE AGENDA VIEW (Visible only on Mobile) --- */}
+                {/* MOBILE LIST VIEW */}
                 <div className="md:hidden space-y-4">
-                     {/* Filter only days with trip data for clean list, or show all if needed. Showing all relevant days. */}
                     {days.filter(d => d).map((date, i) => {
                         const dateStr = date.toISOString().split('T')[0];
                         const tripDay = tripDayMap[dateStr];
-                        // Only show days that are part of the trip on mobile to save space
                         if (!tripDay) return null; 
-
                         return (
-                            <div key={dateStr} className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
+                            <div 
+                                key={dateStr} 
+                                onClick={() => onSelectDay(tripDay.idx)} 
+                                className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95 transition-transform"
+                            >
                                 <div className="flex items-center gap-3 mb-3">
                                     <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex flex-col items-center justify-center text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                                         <span className="text-xs font-bold uppercase">{date.toLocaleDateString(undefined, { weekday: 'short' })}</span>
@@ -711,11 +797,10 @@ const CalendarView = ({ trip, onSelectDay }) => {
                                         <h4 className="font-bold text-slate-900 dark:text-white">{tripDay.title}</h4>
                                         <p className="text-xs text-slate-500">{tripDay.activities?.length || 0} Activities</p>
                                     </div>
-                                    <button onClick={() => onSelectDay(tripDay.idx)} className="ml-auto p-2 bg-white dark:bg-slate-700 rounded-full shadow-sm text-slate-400 hover:text-indigo-600">
+                                    <div className="ml-auto p-2 bg-white dark:bg-slate-700 rounded-full shadow-sm text-slate-400 hover:text-indigo-600">
                                         <ChevronRight size={20} />
-                                    </button>
+                                    </div>
                                 </div>
-                                
                                 <div className="space-y-2 pl-4 border-l-2 border-indigo-100 dark:border-slate-700 ml-6">
                                     {tripDay.activities?.sort((a,b) => (a.time || '').localeCompare(b.time || '')).map((act, idx) => (
                                         <div key={idx} className="flex items-start gap-3 relative py-1">
@@ -729,8 +814,6 @@ const CalendarView = ({ trip, onSelectDay }) => {
                             </div>
                         );
                     })}
-                    
-                    {/* Fallback if no days found (e.g. trip starts next month) */}
                      {days.filter(d => d && tripDayMap[d.toISOString().split('T')[0]]).length === 0 && (
                         <div className="text-center py-10 text-slate-400">
                             <CalendarIcon size={48} className="mx-auto mb-2 opacity-20" />
@@ -738,7 +821,6 @@ const CalendarView = ({ trip, onSelectDay }) => {
                         </div>
                     )}
                 </div>
-
              </div>
         </div>
     );
@@ -746,10 +828,9 @@ const CalendarView = ({ trip, onSelectDay }) => {
 
 const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const [expenses, setExpenses] = useState([]);
-    // Default to trip currency if set, otherwise fallback to HKD or USD
     const [targetCurrency, setTargetCurrency] = useState(trip?.currency || 'USD'); 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [editingExpense, setEditingExpense] = useState(null); // New state for editing
+    const [editingExpense, setEditingExpense] = useState(null); 
 
     useEffect(() => {
         if(!currentUser) return;
@@ -759,58 +840,54 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
         return () => unsub();
     }, [currentUser]);
 
-    // Update target currency if trip currency changes
-    useEffect(() => {
-        if (trip?.currency) setTargetCurrency(trip.currency);
+    useEffect(() => { 
+        if (trip?.currency) setTargetCurrency(trip.currency); 
     }, [trip?.currency]);
 
     const handleSaveExpense = async (newExp) => { 
         let updated;
         const existingIndex = expenses.findIndex(e => e.id === newExp.id);
-        
-        if (existingIndex >= 0) {
-            // Edit existing
-            updated = [...expenses];
-            updated[existingIndex] = newExp;
-        } else {
-            // Add new
-            updated = [...expenses, newExp];
+        if (existingIndex >= 0) { 
+            updated = [...expenses]; 
+            updated[existingIndex] = newExp; 
+        } else { 
+            updated = [...expenses, newExp]; 
         }
-        
         setExpenses(updated); 
         setIsAddModalOpen(false); 
         setEditingExpense(null);
         await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); 
     };
 
-    const handleDelete = async (id) => { const updated = expenses.filter(e => e.id !== id); setExpenses(updated); await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); };
-    
-    // Open modal in edit mode
-    const handleEditStart = (expense) => {
-        setEditingExpense(expense);
-        setIsAddModalOpen(true);
+    const handleDelete = async (id) => { 
+        const updated = expenses.filter(e => e.id !== id); 
+        setExpenses(updated); 
+        await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); 
     };
 
-    const handleCloseModal = () => {
-        setIsAddModalOpen(false);
-        setEditingExpense(null);
+    const handleEditStart = (expense) => { 
+        setEditingExpense(expense); 
+        setIsAddModalOpen(true); 
+    };
+
+    const handleCloseModal = () => { 
+        setIsAddModalOpen(false); 
+        setEditingExpense(null); 
     };
 
     const convertToBase = (amt, code) => (amt / (EXCHANGE_RATES[code] || 1)) * EXCHANGE_RATES[BASE_CURRENCY];
     
-    // Calculations
     const totalBase = expenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
     const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
     const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
     const totalDisplay = totalBase * (targetRate / baseRate);
 
-    // Grouping by Date
     const expensesByDate = useMemo(() => {
         const grouped = {};
-        expenses.forEach(e => {
-            const d = e.date || 'Unscheduled';
-            if (!grouped[d]) grouped[d] = [];
-            grouped[d].push(e);
+        expenses.forEach(e => { 
+            const d = e.date || 'Unscheduled'; 
+            if (!grouped[d]) grouped[d] = []; 
+            grouped[d].push(e); 
         });
         return grouped;
     }, [expenses]);
@@ -819,22 +896,20 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
 
     return (
         <div className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
-            {/* Grand Total Card */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
                 <div className="relative z-10">
                     <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
                     <h1 className="text-4xl font-black mb-6">{formatCurrency(totalDisplay, targetCurrency)}</h1>
                     <div className="flex gap-2">
-                         <button onClick={() => isEditMode && setIsAddModalOpen(true)} disabled={!isEditMode} className="bg-white text-black px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-100 disabled:opacity-50"><Plus size={16} /> Add Expense</button>
-                         {/* Simple select for view only since it's cleaner on header */}
+                         <button onClick={() => isEditMode && setIsAddModalOpen(true)} disabled={!isEditMode} className="bg-white text-black px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-100 disabled:opacity-50">
+                            <Plus size={16} /> Add Expense
+                         </button>
                          <select value={targetCurrency} onChange={e => setTargetCurrency(e.target.value)} className="bg-white/10 text-white border border-white/20 px-3 py-2 rounded-xl text-sm outline-none appearance-none font-bold">
                             {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code} className="text-black">{c.code}</option>)}
                          </select>
                     </div>
                 </div>
             </div>
-
-            {/* Expenses List Grouped by Date */}
             <div className="space-y-6">
                 {expenses.length === 0 ? ( 
                     <div className="text-center py-10 text-slate-400"><Wallet size={48} className="mx-auto mb-2 opacity-20" /><p>No expenses yet.</p></div> 
@@ -843,7 +918,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                         const dailyExpenses = expensesByDate[date];
                         const dailyTotalBase = dailyExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
                         const dailyTotalDisplay = dailyTotalBase * (targetRate / baseRate);
-                        
                         return (
                             <div key={date} className="animate-in slide-in-from-bottom-2">
                                 <div className="flex justify-between items-end mb-3 px-2">
@@ -852,7 +926,14 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                                 </div>
                                 <div className="space-y-3">
                                     {dailyExpenses.map(e => (
-                                        <ExpenseCard key={e.id} expense={e} onDelete={handleDelete} onEdit={handleEditStart} isEditMode={isEditMode} currencyOptions={CURRENCY_OPTIONS} />
+                                        <ExpenseCard 
+                                            key={e.id} 
+                                            expense={e} 
+                                            onDelete={handleDelete} 
+                                            onEdit={handleEditStart} 
+                                            isEditMode={isEditMode} 
+                                            currencyOptions={CURRENCY_OPTIONS} 
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -860,7 +941,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                     })
                 )}
             </div>
-            
             <Modal isOpen={isAddModalOpen} onClose={handleCloseModal} title={editingExpense ? "Edit Expense" : "New Expense"}>
                 <AddExpenseForm onAddExpense={handleSaveExpense} currencyOptions={CURRENCY_OPTIONS} convertToBase={convertToBase} initialData={editingExpense} />
             </Modal>
@@ -868,7 +948,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     );
 };
 
-// --- DASHBOARD VIEW (NEW) ---
 const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 overflow-x-hidden">
@@ -880,45 +959,44 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
                             <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                 <User size={14} />
                             </div>
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 max-w-[100px] truncate">
-                                {userEmail || 'Guest'}
-                            </span>
+                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 max-w-[100px] truncate">{userEmail || 'Guest'}</span>
                         </div>
-                        <button onClick={onSignOut} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors"><LogOut size={20} /></button>
+                        <button onClick={onSignOut} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors">
+                            <LogOut size={20} />
+                        </button>
                     </div>
                  </div>
-
+                 
                  <div className="grid md:grid-cols-2 gap-6">
                     {trips.map(trip => (
                         <button key={trip.id} onClick={() => onSelectTrip(trip.id)} className="relative group text-left h-48 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
                              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-10" />
                              <img src={trip.coverImage} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                              
-                             {/* DELETE BUTTON - ADDED & MOBILE OPTIMIZED (Always visible on mobile/edit mode) */}
                              <div className="absolute top-3 right-3 z-30 opacity-100 transition-opacity">
-                                <div 
-                                    onClick={(e) => { e.stopPropagation(); onDeleteTrip(trip); }}
-                                    className="p-2 bg-black/40 hover:bg-red-600 text-white backdrop-blur-md rounded-full transition-colors shadow-lg cursor-pointer md:opacity-0 md:group-hover:opacity-100"
-                                    title="Delete Trip"
-                                >
+                                <div onClick={(e) => { e.stopPropagation(); onDeleteTrip(trip); }} className="p-2 bg-black/40 hover:bg-red-600 text-white backdrop-blur-md rounded-full transition-colors shadow-lg cursor-pointer md:opacity-0 md:group-hover:opacity-100" title="Delete Trip">
                                     <Trash2 size={16} />
                                 </div>
                              </div>
-
+                             
                              <div className="absolute bottom-0 left-0 p-6 z-20 text-white">
-                                 <h3 className="text-2xl font-black mb-1">{trip.title}</h3>
-                                 <p className="text-sm opacity-90 font-medium flex items-center gap-1"><CalendarIcon size={14}/> {trip.startDate}</p>
+                                <h3 className="text-2xl font-black mb-1">{trip.title}</h3>
+                                <p className="text-sm opacity-90 font-medium flex items-center gap-1"><CalendarIcon size={14}/> {trip.startDate}</p>
                              </div>
                         </button>
                     ))}
-
+                    
                     <button onClick={onNewTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all group">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Plus size={24} /></div>
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                            <Plus size={24} />
+                        </div>
                         <span className="font-bold">Plan New Trip</span>
                     </button>
-
-                     <button onClick={onImportTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"><Download size={24} /></div>
+                    
+                    <button onClick={onImportTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
+                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                            <Download size={24} />
+                        </div>
                         <span className="font-bold">Import Trip</span>
                     </button>
                  </div>
@@ -934,65 +1012,63 @@ export default function TravelApp() {
     const [trips, setTrips] = useState([]);
     
     // -- LOCAL STORAGE PERSISTENCE --
-    // Lazy initialize state from localStorage to prevent flash of wrong theme/view
-    const [isDarkMode, setIsDarkMode] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('theme') === 'dark';
-        }
-        return false;
+    const [isDarkMode, setIsDarkMode] = useState(() => { 
+        if (typeof window !== 'undefined') return localStorage.getItem('theme') === 'dark'; 
+        return false; 
     });
-
-    const [currentTripId, setCurrentTripId] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('currentTripId');
-        }
-        return null;
+    
+    const [currentTripId, setCurrentTripId] = useState(() => { 
+        if (typeof window !== 'undefined') return localStorage.getItem('currentTripId'); 
+        return null; 
     });
-
-    const [view, setView] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('view') || 'dashboard';
-        }
-        return 'dashboard';
+    
+    const [view, setView] = useState(() => { 
+        if (typeof window !== 'undefined') return localStorage.getItem('view') || 'dashboard'; 
+        return 'dashboard'; 
     });
 
     const [activeDayIdx, setActiveDayIdx] = useState(0);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [viewMode, setViewMode] = useState('timeline'); // 'timeline' | 'budget' | 'calendar'
+    const [viewMode, setViewMode] = useState('timeline'); 
     const [modalOpen, setModalOpen] = useState(null);
     const [embeddedMaps, setEmbeddedMaps] = useState({});
-    const [isMapOpen, setIsMapOpen] = useState(false); // Map sidebar toggle
+    const [isMapOpen, setIsMapOpen] = useState(false); 
     const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
-    const [imageEditState, setImageEditState] = useState(null); // { dayIdx, actId, url }
+    const [imageEditState, setImageEditState] = useState(null); 
     const [sharedCode, setSharedCode] = useState(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    
-    // NEW STATES
     const [isDataLoaded, setIsDataLoaded] = useState(false); 
     const [tripToDelete, setTripToDelete] = useState(null);
     const [newCompanionName, setNewCompanionName] = useState('');
     const [newCompanionPhoto, setNewCompanionPhoto] = useState(null);
-    
-    // 4. SCROLL INTO VIEW REFS
     const dayRefs = useRef([]);
 
-    // --- MANDATORY AUTH PATTERN & DATA FETCHING ---
+    // --- DYNAMIC TITLE HOOK ---
+    const trip = trips.find(t => t.id === currentTripId);
+    
     useEffect(() => {
-        const initAuth = async () => {
-            let signedIn = false;
+        let title = "HorizonPlanner";
+        if (view === 'dashboard') {
+            title = "My Trips - HorizonPlanner";
+        } else if (trip) {
+            title = `${trip.title} - HorizonPlanner`;
+            if (viewMode === 'budget') title = `Budget: ${trip.title}`;
+            if (viewMode === 'calendar') title = `Calendar: ${trip.title}`;
+        }
+        document.title = title;
+    }, [view, trip, viewMode]);
 
-            if (initialAuthToken) {
-                try {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                    signedIn = true;
-                } catch (err) {
-                    // Log the error but proceed to fallback
-                    console.error("Custom token auth failed:", err);
-                }
+    useEffect(() => {
+        const initAuth = async () => { 
+            if (initialAuthToken) { 
+                try { 
+                    await signInWithCustomToken(auth, initialAuthToken); 
+                } catch (err) { 
+                    console.error("Token auth failed:", err); 
+                } 
             } 
         };
         initAuth();
-
         const unsub = onAuthStateChanged(auth, (u) => { 
             setUser(u); 
             setAuthLoading(false); 
@@ -1000,36 +1076,29 @@ export default function TravelApp() {
         return () => unsub(); 
     }, []);
 
-    // Local Storage Effects
-    useEffect(() => {
-        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+    useEffect(() => { 
+        localStorage.setItem('theme', isDarkMode ? 'dark' : 'light'); 
     }, [isDarkMode]);
-
-    useEffect(() => {
-        if (currentTripId) {
-            localStorage.setItem('currentTripId', currentTripId);
-        }
+    
+    useEffect(() => { 
+        if (currentTripId) localStorage.setItem('currentTripId', currentTripId); 
     }, [currentTripId]);
-
-    useEffect(() => {
-        localStorage.setItem('view', view);
+    
+    useEffect(() => { 
+        localStorage.setItem('view', view); 
     }, [view]);
 
-
-    // RESET STATE ON LOGOUT/USER CHANGE TO PREVENT UI LEAKS (FIX FOR BUG #1)
     useEffect(() => {
         if (!user) {
-            setShowSignOutConfirm(false);
-            setModalOpen(null);
-            setView('dashboard');
+            setShowSignOutConfirm(false); 
+            setModalOpen(null); 
+            setView('dashboard'); 
             setIsEditMode(false);
-            setImageEditState(null);
-            setTripToDelete(null); // Clear delete modal
-            // Trips will be cleared by the snapshot listener returning nothing or unmounting
-            setTrips([]);
+            setImageEditState(null); 
+            setTripToDelete(null); 
+            setTrips([]); 
             setIsDataLoaded(false);
-            // Clear trip persistence on logout
-            localStorage.removeItem('currentTripId');
+            localStorage.removeItem('currentTripId'); 
             localStorage.removeItem('view');
         }
     }, [user]);
@@ -1040,185 +1109,149 @@ export default function TravelApp() {
             if (doc.exists()) {
                 const data = doc.data();
                 setTrips(data.allTrips || []);
-                // If we are in trip view, ensure current ID is valid or fallback
-                if (view === 'trip' && currentTripId && !data.allTrips.find(t => t.id === currentTripId)) {
-                   setView('dashboard');
-                   setCurrentTripId(null);
+                if (view === 'trip' && currentTripId && !data.allTrips.find(t => t.id === currentTripId)) { 
+                    setView('dashboard'); 
+                    setCurrentTripId(null); 
                 }
-            } else {
-                // Initialize EMPTY trip list for new users (FIX FOR BUG #1 PART 2)
-                setDoc(getUserTripRef(user.uid), { allTrips: [], currentTripId: null });
+            } else { 
+                setDoc(getUserTripRef(user.uid), { allTrips: [], currentTripId: null }); 
             }
-            setIsDataLoaded(true); // Mark data as loaded to enable saves
+            setIsDataLoaded(true); 
         });
         return () => unsub();
     }, [user, view, currentTripId]);
     
-    // 4. AUTO-SCROLL SIDEBAR LOGIC
-    useEffect(() => {
-        if (dayRefs.current[activeDayIdx]) {
-            dayRefs.current[activeDayIdx].scrollIntoView({
-                behavior: 'smooth',
-                block: 'nearest',
-                inline: 'center'
-            });
-        }
+    useEffect(() => { 
+        if (dayRefs.current[activeDayIdx]) { 
+            dayRefs.current[activeDayIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); 
+        } 
     }, [activeDayIdx]);
 
     const saveTimeout = useRef(null);
     useEffect(() => {
-        // Updated guard to prevent saving empty state before data load
         if (!user || !isDataLoaded) return;
-        
         clearTimeout(saveTimeout.current);
-        saveTimeout.current = setTimeout(() => {
-            setDoc(getUserTripRef(user.uid), { allTrips: trips, currentTripId }, { merge: true });
+        saveTimeout.current = setTimeout(() => { 
+            setDoc(getUserTripRef(user.uid), { allTrips: trips, currentTripId }, { merge: true }); 
         }, 1000);
     }, [trips, currentTripId, user, isDataLoaded]);
 
-    const trip = trips.find(t => t.id === currentTripId);
-    
-    // WEATHER LOGIC UPDATE: Use Trip Start Date and Length
-    // Pass startDate string DIRECTLY to avoid timezone issues
     const { weatherData, isError: weatherError, isHistorical } = useWeather(
         trip?.lat || 22.3193, 
         trip?.lon || 114.1694, 
-        trip?.startDate, // Passing string directly
+        trip?.startDate, 
         trip?.days?.length || 7
     );
-
-    const updateTrip = (updates) => { setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); };
     
-    // Prepare options for Settings CustomSelect
-    const countryOptions = COUNTRY_DATA.map(c => ({
-        value: c.name,
-        label: c.name,
-        icon: getFlagUrl(c.countryCode)
+    const updateTrip = (updates) => { 
+        setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); 
+    };
+    
+    const countryOptions = COUNTRY_DATA.map(c => ({ 
+        value: c.name, 
+        label: c.name, 
+        icon: getFlagUrl(c.countryCode) 
     }));
     
-    // Prepare currency options for select
-    const currencySelectOptions = CURRENCY_OPTIONS.map(c => ({
-        value: c.code,
-        label: `${c.code} - ${c.name}`,
-        icon: getFlagUrl(c.countryCode)
+    const currencySelectOptions = CURRENCY_OPTIONS.map(c => ({ 
+        value: c.code, 
+        label: `${c.code} - ${c.name}`, 
+        icon: getFlagUrl(c.countryCode) 
     }));
 
-    // --- COMPANION HANDLER ---
     const handleAddCompanion = async (e) => {
         e.preventDefault();
         if (!newCompanionName.trim()) return;
-
+        
         let photoUrl = null;
-        if (newCompanionPhoto) {
-            photoUrl = await compressImage(newCompanionPhoto);
+        if (newCompanionPhoto) { 
+            photoUrl = await compressImage(newCompanionPhoto); 
         }
-
-        const newCompanion = {
-            name: newCompanionName,
-            photo: photoUrl
-        };
-
-        // Handle legacy strings vs new objects structure
+        
+        const newCompanion = { name: newCompanionName, photo: photoUrl };
         const updatedCompanions = [...trip.companions, newCompanion];
         updateTrip({ companions: updatedCompanions });
-        
-        // Reset form
-        setNewCompanionName('');
+        setNewCompanionName(''); 
         setNewCompanionPhoto(null);
     };
 
-    // Actions
-    const handleSelectTrip = (id) => { setCurrentTripId(id); setView('trip'); setActiveDayIdx(0); };
+    const handleSelectTrip = (id) => { 
+        setCurrentTripId(id); 
+        setView('trip'); 
+        setActiveDayIdx(0); 
+    };
+    
     const handleNewTrip = () => {
         const newTrip = { 
             id: Math.random().toString(36).substr(2, 9), 
             title: 'New Trip', 
             startDate: new Date().toISOString().split('T')[0], 
-            coverImage: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2000&q=80',
+            coverImage: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=2000&q=80', 
             companions: [], 
-            lat: 22.3193, // Default HK
-            lon: 114.1694, // Default HK
-            currency: 'USD', // Default Currency
+            lat: 22.3193, 
+            lon: 114.1694, 
+            currency: 'USD', 
             days: [{ id: 'd1', date: new Date().toISOString().split('T')[0], title: 'Day 1', activities: [] }] 
         };
         setTrips(prev => [...prev, newTrip]);
     };
 
-    const handleDeleteTripConfirm = async () => {
-        if (!tripToDelete) return;
-        const newTrips = trips.filter(t => t.id !== tripToDelete.id);
-        setTrips(newTrips);
-        setTripToDelete(null);
-        // Auto-save useEffect will handle the persistence
+    const handleDeleteTripConfirm = async () => { 
+        if (!tripToDelete) return; 
+        const newTrips = trips.filter(t => t.id !== tripToDelete.id); 
+        setTrips(newTrips); 
+        setTripToDelete(null); 
     };
 
-    // --- SMART ADD DAY (DETECT DATE) ---
     const handleAddDay = () => {
-        // Find the last day in the itinerary
         const lastDay = trip.days[trip.days.length - 1];
         let nextDate = new Date();
         let nextTitle = `Day ${trip.days.length + 1}`;
-
-        if (lastDay && lastDay.date) {
-            // Parse the last day's date and add 1 day
-            const lastDateObj = new Date(lastDay.date);
-            lastDateObj.setDate(lastDateObj.getDate() + 1);
-            nextDate = lastDateObj;
+        if (lastDay && lastDay.date) { 
+            const lastDateObj = new Date(lastDay.date); 
+            lastDateObj.setDate(lastDateObj.getDate() + 1); 
+            nextDate = lastDateObj; 
         }
-
-        // Format back to YYYY-MM-DD for consistency
         const dateStr = nextDate.toISOString().split('T')[0];
-        
         const newDay = { 
             id: Math.random().toString(36).substr(2, 9), 
             date: dateStr, 
             title: nextTitle, 
             activities: [] 
         };
-        
-        // Update state
         updateTrip({ days: [...trip.days, newDay] });
     };
 
-    const handleDeleteDay = (idx) => {
-        if (trip.days.length <= 1) return alert("You must have at least one day.");
-        if (confirm(`Delete Day ${idx + 1}?`)) {
-            const newDays = trip.days.filter((_, i) => i !== idx);
-            updateTrip({ days: newDays });
-            
-            // Fix active index if we deleted the last one or the current one
-            if (activeDayIdx >= newDays.length) {
-                setActiveDayIdx(newDays.length - 1);
-            }
-        }
-    };
-
-    const handleSignOut = async () => {
-        setShowSignOutConfirm(false); // Close modal first
-        try {
-            await signOut(auth);
-        } catch (error) {
-            console.error("Error signing out:", error);
-        }
+    const handleDeleteDay = (idx) => { 
+        if (trip.days.length <= 1) return alert("You must have at least one day."); 
+        if (confirm(`Delete Day ${idx + 1}?`)) { 
+            const newDays = trip.days.filter((_, i) => i !== idx); 
+            updateTrip({ days: newDays }); 
+            if (activeDayIdx >= newDays.length) { 
+                setActiveDayIdx(newDays.length - 1); 
+            } 
+        } 
     };
     
-    // --- UPDATED SHARE LOGIC ---
+    const handleSignOut = async () => { 
+        setShowSignOutConfirm(false); 
+        try { 
+            await signOut(auth); 
+        } catch (error) { 
+            console.error("Error signing out:", error); 
+        } 
+    };
+    
     const handleShareTrip = async () => {
         if (!trip) return;
-        // Generate a random 6-character code
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-        try {
-            // Data sanitization to avoid serialization errors which can sometimes trigger weird firestore errors
-            const cleanTrip = JSON.parse(JSON.stringify(trip));
-            await setDoc(getSharedTripRef(code), cleanTrip);
-            setSharedCode(code);
-        } catch (error) {
-            console.error("Share Error:", error);
-            if (error.code === 'permission-denied') {
-                alert("Permission Error: Please check your Firestore Security Rules in the Firebase Console. You need to allow writes to the 'public' collection for authenticated users.");
-            } else {
-                alert(`Error sharing trip: ${error.message}`);
-            }
+        try { 
+            const cleanTrip = JSON.parse(JSON.stringify(trip)); 
+            await setDoc(getSharedTripRef(code), cleanTrip); 
+            setSharedCode(code); 
+        } catch (error) { 
+            console.error("Share Error:", error); 
+            alert(`Error: ${error.message}`); 
         }
     };
 
@@ -1226,91 +1259,85 @@ export default function TravelApp() {
         e.preventDefault();
         const code = e.target.shareId.value.trim().toUpperCase();
         if(!code) return;
-        
-        try {
-            const docSnap = await getDoc(getSharedTripRef(code));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+        try { 
+            const docSnap = await getDoc(getSharedTripRef(code)); 
+            if (docSnap.exists()) { 
+                const data = docSnap.data(); 
                 const newTrip = { 
                     ...data, 
                     id: Math.random().toString(36).substr(2, 9), 
                     title: `${data.title} (Imported)` 
-                };
-                setTrips(prev => [...prev, newTrip]);
-                setModalOpen(null);
-                alert("Trip Imported Successfully!");
-            } else {
-                alert("Trip not found! Check the code.");
-            }
-        } catch (error) {
-            console.error("Import Error:", error);
-             if (error.code === 'permission-denied') {
-                alert("Unable to import due to security settings.");
-            } else {
-                alert("Failed to import.");
-            }
+                }; 
+                setTrips(prev => [...prev, newTrip]); 
+                setModalOpen(null); 
+                alert("Trip Imported Successfully!"); 
+            } else { 
+                alert("Trip not found! Check the code."); 
+            } 
+        } catch (error) { 
+            console.error("Import Error:", error); 
+            alert("Failed to import."); 
         }
     };
     
-    // Activity Helpers
-    const handleDeleteActivity = (dayIdx, actId) => {
-        const newDays = [...trip.days];
-        newDays[dayIdx].activities = newDays[dayIdx].activities.filter(a => a.id !== actId);
-        updateTrip({ days: newDays });
-    };
-     const updateActivityCost = (dayIdx, actId, val) => {
-        const newDays = [...trip.days];
-        const day = newDays[dayIdx];
-        const actIndex = day.activities.findIndex(a => a.id === actId);
-        if (actIndex > -1) { day.activities[actIndex].cost = val; updateTrip({ days: newDays }); }
-    };
-    const handleUpdateActivity = (dayIdx, actId, field, value) => {
-        const newDays = [...trip.days];
-        const actIdx = newDays[dayIdx].activities.findIndex(a => a.id === actId);
-        if (actIdx === -1) return;
-        newDays[dayIdx].activities[actIdx] = { ...newDays[dayIdx].activities[actIdx], [field]: value };
-        updateTrip({ days: newDays });
+    const handleDeleteActivity = (dayIdx, actId) => { 
+        const newDays = [...trip.days]; 
+        newDays[dayIdx].activities = newDays[dayIdx].activities.filter(a => a.id !== actId); 
+        updateTrip({ days: newDays }); 
     };
     
-    // 3. OPTIMIZE ROUTE (SORT BY TIME)
+    const updateActivityCost = (dayIdx, actId, val) => { 
+        const newDays = [...trip.days]; 
+        const day = newDays[dayIdx]; 
+        const actIndex = day.activities.findIndex(a => a.id === actId); 
+        if (actIndex > -1) { 
+            day.activities[actIndex].cost = val; 
+            updateTrip({ days: newDays }); 
+        } 
+    };
+    
+    const handleUpdateActivity = (dayIdx, actId, field, value) => { 
+        const newDays = [...trip.days]; 
+        const actIdx = newDays[dayIdx].activities.findIndex(a => a.id === actId); 
+        if (actIdx === -1) return; 
+        newDays[dayIdx].activities[actIdx] = { 
+            ...newDays[dayIdx].activities[actIdx], 
+            [field]: value 
+        }; 
+        updateTrip({ days: newDays }); 
+    };
+    
     const handleOptimizeRoute = () => {
         const newDays = [...trip.days];
         const currentActivities = [...newDays[activeDayIdx].activities];
-        
-        // Helper to parse time string like "09:00", "9:00 AM", "14:00 - 15:00"
-        const parseTime = (timeStr) => {
-            if(!timeStr) return 9999; // Push undefined times to end
-            // Extract the first valid time found
-            const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-            if (!match) return 9999;
-            
-            let [_, hours, minutes, period] = match;
-            hours = parseInt(hours);
-            minutes = parseInt(minutes);
-            
-            if (period) {
-                if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
-                if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
-            }
-            return hours * 60 + minutes;
+        const parseTime = (timeStr) => { 
+            if(!timeStr) return 9999; 
+            const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i); 
+            if (!match) return 9999; 
+            let [_, hours, minutes, period] = match; 
+            hours = parseInt(hours); 
+            minutes = parseInt(minutes); 
+            if (period) { 
+                if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12; 
+                if (period.toUpperCase() === 'AM' && hours === 12) hours = 0; 
+            } 
+            return hours * 60 + minutes; 
         };
-
         currentActivities.sort((a, b) => parseTime(a.time) - parseTime(b.time));
         newDays[activeDayIdx].activities = currentActivities;
         updateTrip({ days: newDays });
         alert("Route optimized based on time!");
     };
 
-    const toggleViewMode = () => {
-        if (viewMode === 'timeline') setViewMode('calendar');
-        else if (viewMode === 'calendar') setViewMode('budget');
-        else setViewMode('timeline');
+    const toggleViewMode = () => { 
+        if (viewMode === 'timeline') setViewMode('calendar'); 
+        else if (viewMode === 'calendar') setViewMode('budget'); 
+        else setViewMode('timeline'); 
     };
 
     if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
     if (!user) return <LoginPage onLogin={setUser} />;
     
-    // Dashboard View
     if (view === 'dashboard' || !trip) {
         return (
             <>
@@ -1318,12 +1345,11 @@ export default function TravelApp() {
                     trips={trips} 
                     onSelectTrip={handleSelectTrip} 
                     onNewTrip={handleNewTrip} 
-                    onSignOut={() => setShowSignOutConfirm(true)}
-                    onImportTrip={() => setModalOpen('import')}
-                    userEmail={user.email}
-                    onDeleteTrip={setTripToDelete}
+                    onSignOut={() => setShowSignOutConfirm(true)} 
+                    onImportTrip={() => setModalOpen('import')} 
+                    userEmail={user.email} 
+                    onDeleteTrip={setTripToDelete} 
                 />
-                
                 <Modal isOpen={showSignOutConfirm} onClose={() => setShowSignOutConfirm(false)} title="Sign Out">
                     <div className="space-y-4">
                         <p className="text-slate-600 dark:text-slate-300">Are you sure you want to sign out?</p>
@@ -1333,29 +1359,37 @@ export default function TravelApp() {
                         </div>
                     </div>
                 </Modal>
-
                 <Modal isOpen={modalOpen === 'import'} onClose={() => setModalOpen(null)} title="Import Trip">
                     <div className="space-y-6">
                         <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-center">
-                            <div className="mx-auto w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3"><Download size={24} /></div>
+                            <div className="mx-auto w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3">
+                                <Download size={24} />
+                            </div>
                             <h4 className="font-bold dark:text-white">Import a Friend's Trip</h4>
                             <p className="text-sm text-slate-500 mb-4">Enter the 6-character code to clone a shared itinerary.</p>
                             <form onSubmit={handleImportTrip} className="flex gap-2">
-                                <input name="shareId" placeholder="e.g. A7B2X9" className="flex-grow bg-white dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" required maxLength={6} />
+                                <input 
+                                    name="shareId" 
+                                    placeholder="e.g. A7B2X9" 
+                                    className="flex-grow bg-white dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" 
+                                    required 
+                                    maxLength={6} 
+                                />
                                 <button type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/30 hover:bg-emerald-700 transition-colors">Import</button>
                             </form>
                         </div>
                     </div>
                 </Modal>
-
                 <Modal isOpen={!!tripToDelete} onClose={() => setTripToDelete(null)} title="Delete Trip">
                     <div className="space-y-4">
                         <div className="flex items-center gap-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-2xl text-red-700 dark:text-red-300">
-                             <div className="p-3 bg-red-100 dark:bg-red-900/40 rounded-full"><AlertTriangle size={24} /></div>
-                             <div>
-                                 <h4 className="font-bold">Are you sure?</h4>
-                                 <p className="text-xs opacity-90">This action cannot be undone.</p>
-                             </div>
+                            <div className="p-3 bg-red-100 dark:bg-red-900/40 rounded-full">
+                                <AlertTriangle size={24} />
+                            </div>
+                            <div>
+                                <h4 className="font-bold">Are you sure?</h4>
+                                <p className="text-xs opacity-90">This action cannot be undone.</p>
+                            </div>
                         </div>
                         <p className="text-slate-600 dark:text-slate-300 text-sm">
                             You are about to delete <strong>{tripToDelete?.title}</strong>. All itinerary data and expenses will be lost permanently.
@@ -1374,56 +1408,59 @@ export default function TravelApp() {
 
     return (
         <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-20 overflow-x-hidden`}>
-            
-             {/* --- HERO SECTION --- */}
             <div className="relative h-[40vh] md:h-[50vh] w-full group">
                 <div className="absolute inset-0 overflow-hidden rounded-b-3xl">
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
-                      <img src={trip.coverImage} alt="Trip Cover" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80'} />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
+                    <img 
+                        src={trip.coverImage} 
+                        alt="Trip Cover" 
+                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+                        onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80'} 
+                    />
                 </div>
                 
-                {/* Navbar (UNCLUTTERED & RESPONSIVE) */}
                 <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
                       <Logo size="sm" onClick={() => { setView('dashboard'); setCurrentTripId(null); }} />
                       
                       <div className="flex gap-2 relative">
-                        {/* Always visible icons */}
                         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/30 backdrop-blur-md rounded-full border border-white/10 mr-2">
                             <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
                                 <User size={12} className="text-white" />
                             </div>
-                            <span className="text-[10px] font-bold text-white max-w-[100px] truncate">
-                                {user.email || 'Guest'}
-                            </span>
+                            <span className="text-[10px] font-bold text-white max-w-[100px] truncate">{user.email || 'Guest'}</span>
                         </div>
                         
-                        {/* EDIT MODE TOGGLE */}
-                        <button onClick={() => setIsEditMode(!isEditMode)} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`} title="Toggle Edit Mode">{isEditMode ? <Unlock size={18} /> : <Lock size={18} />}</button>
+                        <button 
+                            onClick={() => setIsEditMode(!isEditMode)} 
+                            className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`} 
+                            title="Toggle Edit Mode"
+                        >
+                            {isEditMode ? <Unlock size={18} /> : <Lock size={18} />}
+                        </button>
                         
-                        {/* VIEW MODE TOGGLE (Timeline -> Calendar -> Budget) */}
-                        <button onClick={toggleViewMode} className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${viewMode !== 'timeline' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-black/30 border-white/20'}`} title="Change View">
+                        <button 
+                            onClick={toggleViewMode} 
+                            className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${viewMode !== 'timeline' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-black/30 border-white/20'}`} 
+                            title="Change View"
+                        >
                             {viewMode === 'timeline' && <LayoutList size={18} />}
                             {viewMode === 'calendar' && <CalendarIcon size={18} />}
                             {viewMode === 'budget' && <DollarSign size={18} />}
                         </button>
-
-                        {/* UNIFIED MENU DROPDOWN (Replaces individual icons) */}
+                        
                         <div className="relative">
                             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md hover:bg-black/50 transition-colors">
                                 {isMenuOpen ? <X size={18} /> : <MenuIcon size={18} />}
                             </button>
                             
-                            {/* MENU DROPDOWN LIST */}
                             {isMenuOpen && (
                                 <div className="absolute top-14 right-0 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 z-50 animate-in slide-in-from-top-2">
-                                     {/* Mobile User Info (Only show on mobile) */}
                                      <div className="md:hidden flex items-center gap-2 p-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                                         <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                                        <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
                                             <User size={12} className="text-indigo-600" />
-                                         </div>
-                                         <span className="text-[10px] font-bold text-slate-500 truncate w-full">{user.email}</span>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-500 truncate w-full">{user.email}</span>
                                      </div>
-
                                      <button onClick={() => { setModalOpen('share'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Share2 size={16} /> Share Trip</button>
                                      <button onClick={() => { setModalOpen('settings'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Settings size={16} /> Trip Settings</button>
                                      <button onClick={() => { setShowSignOutConfirm(true); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-red-500 text-sm font-medium"><LogOut size={16} /> Sign Out</button>
@@ -1432,67 +1469,67 @@ export default function TravelApp() {
                         </div>
                       </div>
                 </div>
-                {/* Title Block */}
                 <div className="absolute bottom-0 left-0 right-0 z-20 p-6 md:p-12 max-w-6xl mx-auto">
                     <div className="animate-in slide-in-from-bottom-5 duration-700 relative">
                         {isEditMode && (
                             <div className="absolute right-0 bottom-2">
-                                <button onClick={() => setModalOpen('settings')} className="bg-black/40 backdrop-blur-md hover:bg-black/60 text-white border border-white/20 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all shadow-lg"><Camera size={14} /> Change Cover</button>
+                                <button onClick={() => setModalOpen('settings')} className="bg-black/40 backdrop-blur-md hover:bg-black/60 text-white border border-white/20 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all shadow-lg">
+                                    <Camera size={14} /> Change Cover
+                                </button>
                             </div>
                         )}
+                        
                         <div className="flex items-center gap-3 mb-4">
-                            <span className="px-3 py-1 bg-indigo-500/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg backdrop-blur-sm">{trip.startDate}</span>
+                            <span className="px-3 py-1 bg-indigo-500/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg backdrop-blur-sm">
+                                {trip.startDate}
+                            </span>
                             <div className="flex -space-x-2">
-                                {trip.companions?.map((c, i) => {
-                                    // Handle legacy string data vs new object data
-                                    const name = typeof c === 'string' ? c : c.name;
-                                    const photo = typeof c === 'object' ? c.photo : null;
-                                    
+                                {trip.companions?.map((c, i) => { 
+                                    const name = typeof c === 'string' ? c : c.name; 
+                                    const photo = typeof c === 'object' ? c.photo : null; 
                                     return (
                                         <div key={i} className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-500 flex items-center justify-center text-[10px] font-bold text-indigo-800 relative overflow-hidden" title={name}>
-                                            {photo ? (
-                                                <img src={photo} alt={name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                name[0]
-                                            )}
+                                            {photo ? (<img src={photo} alt={name} className="w-full h-full object-cover" />) : (name[0])}
                                         </div>
-                                    );
+                                    ); 
                                 })}
                             </div>
                         </div>
+                        
                         {isEditMode ? (
-                             <input type="text" value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} className="block text-4xl md:text-6xl font-black text-white bg-white/10 rounded-xl px-2 -ml-2 border border-white/30 focus:border-white focus:outline-none w-full shadow-black drop-shadow-md mb-2 backdrop-blur-sm"/>
+                            <input 
+                                type="text" 
+                                value={trip.title} 
+                                onChange={(e) => updateTrip({ title: e.target.value })} 
+                                className="block text-4xl md:text-6xl font-black text-white bg-white/10 rounded-xl px-2 -ml-2 border border-white/30 focus:border-white focus:outline-none w-full shadow-black drop-shadow-md mb-2 backdrop-blur-sm"
+                            />
                         ) : (
                             <h1 className="text-4xl md:text-6xl font-black text-white leading-tight drop-shadow-lg mb-2">{trip.title}</h1>
                         )}
+                        
                         <div className="flex gap-4 items-center">
                             <div className="h-1 w-12 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
-                            <p className="text-white/90 text-lg md:text-xl font-medium drop-shadow-md">{trip.days.length} Days • {trip.days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} Activities</p>
+                            <p className="text-white/90 text-lg md:text-xl font-medium drop-shadow-md">
+                                {trip.days.length} Days • {trip.days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} Activities
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* --- MAIN CONTENT --- */}
-            {viewMode === 'budget' && (
-                <BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} />
-            )}
+            {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} />)}
             
-            {viewMode === 'calendar' && (
-                <CalendarView 
-                    trip={trip} 
-                    onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} 
-                />
-            )}
+            {viewMode === 'calendar' && (<CalendarView trip={trip} onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} />)}
             
             {viewMode === 'timeline' && (
-                <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30">
-                    
-                    {/* Day Selector - MOVED DOWN (mt-8) & INCREASED STICKY TOP (top-20) */}
+                <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30 pb-safe">
                     <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-20 z-40 mt-8">
                         {trip.days.map((day, idx) => (
                             <div key={day.id} ref={el => dayRefs.current[idx] = el} className="relative group/day">
-                                <button onClick={() => setActiveDayIdx(idx)} className={`relative flex-shrink-0 px-5 py-2.5 rounded-xl transition-all duration-300 flex flex-col items-center min-w-[120px] ${activeDayIdx === idx ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                <button 
+                                    onClick={() => setActiveDayIdx(idx)} 
+                                    className={`relative flex-shrink-0 px-5 py-2.5 rounded-xl transition-all duration-300 flex flex-col items-center min-w-[120px] ${activeDayIdx === idx ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+                                >
                                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Day {idx + 1}</span>
                                     <span className="text-sm font-semibold truncate max-w-[120px]">{day.date.split('-').slice(1).join('/')}</span>
                                     <WeatherDisplay date={day.date} weatherData={weatherData} isError={weatherError} isHistorical={isHistorical} />
@@ -1505,23 +1542,27 @@ export default function TravelApp() {
                             </div>
                         ))}
                          {isEditMode && (
-                            <button onClick={handleAddDay} className="px-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-colors"><Plus size={20} /></button>
+                            <button onClick={handleAddDay} className="px-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-colors">
+                                <Plus size={20} />
+                            </button>
                         )}
                     </div>
 
-                    {/* LAYOUT FIX: Changed 'grid' to 'flex flex-col lg:grid' to prevent mobile overflow issues */}
                     <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 md:gap-12 animate-in fade-in duration-500">
-                         {/* Day Info Sidebar */}
                         <div className="space-y-6 lg:sticky lg:top-32 h-min">
                              <div className="space-y-2">
                                 {isEditMode ? (
                                     <>
-                                        <input value={activeDay.title} onChange={(e) => { const newDays = [...trip.days]; newDays[activeDayIdx].title = e.target.value; updateTrip({ days: newDays }); }} className="text-3xl font-extrabold bg-transparent border-b border-slate-300 w-full focus:outline-none dark:text-white"/>
+                                        <input 
+                                            value={activeDay.title} 
+                                            onChange={(e) => { const newDays = [...trip.days]; newDays[activeDayIdx].title = e.target.value; updateTrip({ days: newDays }); }} 
+                                            className="text-3xl font-extrabold bg-transparent border-b border-slate-300 w-full focus:outline-none dark:text-white"
+                                        />
                                         <textarea 
                                             value={activeDay.summary || ''} 
                                             onChange={(e) => { const newDays = [...trip.days]; newDays[activeDayIdx].summary = e.target.value; updateTrip({ days: newDays }); }} 
-                                            className="w-full text-lg bg-transparent border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus:border-indigo-500 resize-none h-24 text-zinc-600 dark:text-slate-400"
-                                            placeholder="Add a summary for today..."
+                                            className="w-full text-lg bg-transparent border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus:border-indigo-500 resize-none h-24 text-zinc-600 dark:text-slate-400" 
+                                            placeholder="Add a summary for today..." 
                                         />
                                     </>
                                 ) : (
@@ -1532,7 +1573,6 @@ export default function TravelApp() {
                                 )}
                             </div>
                             
-                            {/* Collapsible Day Map */}
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50 overflow-hidden">
                                 <button onClick={() => setIsMapOpen(!isMapOpen)} className="w-full p-4 flex items-center justify-between font-bold text-indigo-900 dark:text-indigo-100 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 transition-colors">
                                     <span className="flex items-center gap-2"><Map size={18} /> Day Map</span>
@@ -1548,8 +1588,7 @@ export default function TravelApp() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* OPTIMIZE BUTTON - Only in Edit Mode */}
+                            
                             {isEditMode && (
                                 <button onClick={handleOptimizeRoute} className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
                                     <Wand2 size={18} /> Optimize Order (By Time)
@@ -1557,58 +1596,43 @@ export default function TravelApp() {
                             )}
                         </div>
 
-                        {/* Activity Cards with Visual Timeline - DARKENED BORDER */}
-                        <div className="relative border-l-2 border-slate-300 dark:border-slate-700 ml-3 md:ml-40 space-y-8 pl-6 md:pl-10 pb-4">
+                        {/* TIMELINE CONTAINER with increased left margin for mobile alignment */}
+                        <div className="relative border-l-2 border-slate-300 dark:border-slate-700 ml-6 md:ml-40 space-y-8 pl-8 md:pl-10 pb-4">
                              {activeDay.activities.map((act, idx) => (
                                 <div key={act.id} className={`relative group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
                                     
-                                    {/* TIMELINE DOT - Centered on the border line */}
-                                    <div className="absolute top-6 -left-[1.6rem] md:-left-[2.1rem] w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-zinc-100 dark:ring-slate-950 z-10 shadow-sm"></div>
-
-                                    {/* CARD CONTENT */}
+                                    {/* TIMELINE DOT */}
+                                    <div className="absolute top-6 -left-[2.5rem] md:-left-[2.1rem] w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-zinc-100 dark:ring-slate-950 z-10 shadow-sm"></div>
+                                    
                                     <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300 w-full">
                                         <div className="flex flex-col sm:flex-row h-full">
-                                            
-                                            {/* IMAGE SECTION & TIME DISPLAY */}
                                             <div className="relative w-full h-48 sm:w-48 sm:h-auto flex-shrink-0 bg-slate-200 group/img">
                                                 <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
-                                                
-                                                {/* TIME DISPLAY - INSIDE PICTURE (BOTTOM) */}
                                                 <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-end justify-between">
                                                     {isEditMode ? (
                                                         <input 
                                                             type="text" 
                                                             value={act.time} 
-                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'time', e.target.value)}
-                                                            className="font-black text-white text-xl leading-none bg-transparent border-b border-white/50 outline-none w-24 focus:border-indigo-400"
+                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'time', e.target.value)} 
+                                                            className="font-black text-white text-xl leading-none bg-transparent border-b border-white/50 outline-none w-24 focus:border-indigo-400" 
                                                             placeholder="09:00"
                                                         />
                                                     ) : (
                                                         <span className="font-black text-white text-xl leading-none drop-shadow-md tracking-tight">{act.time}</span>
                                                     )}
                                                 </div>
-
-                                                {/* EDIT MODE CAMERA BUTTON */}
                                                 {isEditMode && (
-                                                    <button 
-                                                        onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} 
-                                                        className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full backdrop-blur-md transition-opacity hover:bg-black/70 shadow-lg cursor-pointer z-20 md:opacity-0 md:group-hover/img:opacity-100"
-                                                    >
+                                                    <button onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full backdrop-blur-md transition-opacity hover:bg-black/70 shadow-lg cursor-pointer z-20 md:opacity-0 md:group-hover/img:opacity-100">
                                                         <Camera size={16} />
                                                     </button>
                                                 )}
                                             </div>
-
+                                            
                                             <div className="p-4 flex flex-col flex-grow relative min-w-0">
-                                                
-                                                {/* MAP ICON TO TOP RIGHT ABSOLUTE POSITION */}
                                                 <div className="absolute top-4 right-4 z-10 flex gap-2">
                                                     {!isEditMode && (
                                                         <button 
-                                                            onClick={(e) => {
-                                                                e.stopPropagation(); // Prevent detail expansion
-                                                                setEmbeddedMaps(prev => ({...prev, [act.id]: !prev[act.id]}))
-                                                            }} 
+                                                            onClick={(e) => { e.stopPropagation(); setEmbeddedMaps(prev => ({...prev, [act.id]: !prev[act.id]})) }} 
                                                             className={`transition-colors p-2 rounded-full ${embeddedMaps[act.id] ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`} 
                                                             title="Toggle Map"
                                                         >
@@ -1618,15 +1642,14 @@ export default function TravelApp() {
                                                     {isEditMode && (
                                                         <div className="flex gap-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-slate-800">
                                                             <GripVertical className="text-slate-300 cursor-grab" size={20} />
-                                                            <button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600"><Trash2 size={18} /></button>
+                                                            <button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600">
+                                                                <Trash2 size={18} />
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
-
-                                                {/* Reduced padding-right (pr-6) on mobile to prevent cut-off text */}
+                                                
                                                 <div className="flex-grow space-y-2 pr-6 md:pr-10">
-                                                    
-                                                     {/* 1. TYPE ICON (Now at top left) */}
                                                     <div className="mb-2">
                                                         {isEditMode ? (
                                                             <select 
@@ -1634,9 +1657,7 @@ export default function TravelApp() {
                                                                 onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'type', e.target.value)} 
                                                                 className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)} appearance-none cursor-pointer outline-none focus:ring-2 ring-indigo-500`}
                                                             >
-                                                                {CATEGORY_ICONS.map(cat => (
-                                                                    <option key={cat.id} value={cat.id}>{cat.label}</option>
-                                                                ))}
+                                                                {CATEGORY_ICONS.map(cat => (<option key={cat.id} value={cat.id}>{cat.label}</option>))}
                                                             </select>
                                                         ) : (
                                                             <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)}`}>
@@ -1644,14 +1665,19 @@ export default function TravelApp() {
                                                             </div>
                                                         )}
                                                     </div>
-
+                                                    
                                                     {isEditMode ? (
                                                         <>
-                                                            <input value={act.title} onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'title', e.target.value)} className="w-full font-bold text-lg text-zinc-900 dark:text-white bg-transparent border-b border-slate-200 mb-1 focus:outline-none placeholder-slate-400" placeholder="Activity Title"/>
+                                                            <input 
+                                                                value={act.title} 
+                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'title', e.target.value)} 
+                                                                className="w-full font-bold text-lg text-zinc-900 dark:text-white bg-transparent border-b border-slate-200 mb-1 focus:outline-none placeholder-slate-400" 
+                                                                placeholder="Activity Title"
+                                                            />
                                                             <textarea 
                                                                 value={act.desc} 
                                                                 onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'desc', e.target.value)} 
-                                                                className="w-full text-xs text-zinc-500 dark:text-slate-400 bg-transparent border border-dashed border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none h-16"
+                                                                className="w-full text-xs text-zinc-500 dark:text-slate-400 bg-transparent border border-dashed border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none h-16" 
                                                                 placeholder="Short description..."
                                                             />
                                                         </>
@@ -1670,11 +1696,10 @@ export default function TravelApp() {
                                                             <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
                                                                 {isEditMode ? (
                                                                     <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded p-0.5">
-                                                                        {/* CURRENCY SELECTOR */}
                                                                         <select 
                                                                             value={act.currency || 'USD'} 
-                                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'currency', e.target.value)}
-                                                                            onClick={e => e.stopPropagation()}
+                                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'currency', e.target.value)} 
+                                                                            onClick={e => e.stopPropagation()} 
                                                                             className="bg-transparent text-[10px] font-bold border-none outline-none cursor-pointer w-12"
                                                                         >
                                                                             {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
@@ -1693,20 +1718,18 @@ export default function TravelApp() {
                                                                 )}
                                                             </div>
                                                         </summary>
-                                                        
                                                         <div className="pt-2 text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">
                                                             {isEditMode ? (
                                                                 <textarea 
                                                                     value={act.details} 
-                                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)}
-                                                                    className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs focus:ring-2 focus:ring-indigo-500 outline-none resize-y"
+                                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)} 
+                                                                    className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs focus:ring-2 focus:ring-indigo-500 outline-none resize-y" 
                                                                     placeholder="Add detailed notes, links, or reservations here..."
                                                                 />
                                                             ) : (
                                                                 act.details
                                                             )}
                                                         </div>
-                                                        
                                                         {embeddedMaps[act.id] && (
                                                             <div className="h-48 mt-3 rounded-lg overflow-hidden bg-slate-100 w-full relative z-20">
                                                                 <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(act.title)}&t=&z=15&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
@@ -1721,21 +1744,23 @@ export default function TravelApp() {
                              ))}
                              
                              {isEditMode && (
-                                <button onClick={() => { const newDays = [...trip.days]; newDays[activeDayIdx].activities.push({ id: Math.random().toString(36), time: '12:00', title: 'New Activity', type: 'attraction', desc: 'Description', image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80', currency: 'USD' }); updateTrip({ days: newDays }); }} className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all gap-2">
+                                <button 
+                                    onClick={() => { const newDays = [...trip.days]; newDays[activeDayIdx].activities.push({ id: Math.random().toString(36), time: '12:00', title: 'New Activity', type: 'attraction', desc: 'Description', image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80', currency: 'USD' }); updateTrip({ days: newDays }); }} 
+                                    className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all gap-2"
+                                >
                                     <Plus size={24} /> <span className="font-bold">Add Activity</span>
                                 </button>
-                             )}
+                            )}
                         </div>
                     </div>
                 </main>
             )}
 
             <Modal isOpen={modalOpen === 'share'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Share Trip">
-                {/* ... existing share modal code ... */}
                 <div className="space-y-6">
                     {sharedCode ? (
                         <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
-                             <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
+                            <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
                                 <Check size={32} />
                             </div>
                             <div>
@@ -1750,36 +1775,47 @@ export default function TravelApp() {
                                     <Copy size={20} />
                                 </button>
                             </div>
-                             <p className="text-xs text-slate-400">They can use "Import" to load a copy of your trip.</p>
+                            <p className="text-xs text-slate-400">They can use "Import" to load a copy of your trip.</p>
                         </div>
                     ) : (
                         <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-center">
-                            <div className="mx-auto w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-3"><Share2 size={24} /></div>
+                            <div className="mx-auto w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-3">
+                                <Share2 size={24} />
+                            </div>
                             <h4 className="font-bold dark:text-white">Publish to Public</h4>
                             <p className="text-sm text-slate-500 mb-4">Generates a unique 6-character code for others to import a copy of this trip.</p>
-                            <button onClick={handleShareTrip} className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-colors">Generate Public Link</button>
+                            <button onClick={handleShareTrip} className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-colors">
+                                Generate Public Link
+                            </button>
                         </div>
                     )}
-
+                    
                     <div className="border-t border-slate-100 dark:border-slate-800 pt-6">
-                        <h4 className="font-bold text-sm mb-3 dark:text-white flex items-center gap-2"><Download size={16}/> Import a Friend's Trip</h4>
+                        <h4 className="font-bold text-sm mb-3 dark:text-white flex items-center gap-2">
+                            <Download size={16}/> Import a Friend's Trip
+                        </h4>
                         <p className="text-xs text-slate-500 mb-2">Enter the 6-character code shared by your friend.</p>
                         <form onSubmit={handleImportTrip} className="flex gap-2">
-                            <input name="shareId" placeholder="Enter 6-digit Code (e.g. A7B2X9)" className="flex-grow bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" required maxLength={6} />
-                            <button type="submit" className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">Import</button>
+                            <input 
+                                name="shareId" 
+                                placeholder="Enter 6-digit Code (e.g. A7B2X9)" 
+                                className="flex-grow bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" 
+                                required 
+                                maxLength={6} 
+                            />
+                            <button type="submit" className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">
+                                Import
+                            </button>
                         </form>
                     </div>
                 </div>
             </Modal>
+            
              <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
-                {/* ... existing settings modal code ... */}
                 <div className="space-y-6">
-                    
-                    {/* DARK MODE TOGGLE (Moved to Top) */}
                     <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-transparent dark:border-slate-700">
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                            {isDarkMode ? <Moon size={18} className="text-indigo-400"/> : <Sun size={18} className="text-amber-500"/>} 
-                            App Theme
+                            {isDarkMode ? <Moon size={18} className="text-indigo-400"/> : <Sun size={18} className="text-amber-500"/>} App Theme
                         </span>
                         <button 
                             onClick={() => setIsDarkMode(!isDarkMode)} 
@@ -1788,96 +1824,92 @@ export default function TravelApp() {
                             <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
                         </button>
                     </div>
-
+                    
                     <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
-
+                    
                     <section className="space-y-4">
-                        {/* Title Input */}
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trip Name</label>
-                            <input type="text" value={trip.title} onChange={(e) => updateTrip({ title: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold dark:text-white"/>
+                            <input 
+                                type="text" 
+                                value={trip.title} 
+                                onChange={(e) => updateTrip({ title: e.target.value })} 
+                                className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold dark:text-white"
+                            />
                             <p className="text-[10px] text-slate-400">Pro tip: Type a country like "Trip to Japan" to auto-update cover photo.</p>
                         </div>
                         
-                        {/* Weather Location Selector with Images */}
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><Globe size={12}/> Weather Location</label>
-                            <CustomIconSelect
-                                options={countryOptions}
-                                // ROBUST LOCATION FINDING: Prioritize saved 'weatherLocation' name, fallback to coordinate match
-                                value={trip.weatherLocation || COUNTRY_DATA.find(c => Math.abs(c.lat - (trip.lat || 0)) < 0.1 && Math.abs(c.lon - (trip.lon || 0)) < 0.1)?.name}
-                                onChange={(val) => {
-                                    const selected = COUNTRY_DATA.find(c => c.name === val);
-                                    if(selected) {
-                                        // Update location name EXPLICITLY to prevent UI sync issues
-                                        updateTrip({ lat: selected.lat, lon: selected.lon, weatherLocation: selected.name });
-                                    }
-                                }}
-                                placeholder="Select a location..."
-                                renderValue={(opt) => (
-                                    <div className="flex items-center gap-2">
-                                        <img src={opt.icon} alt="" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
-                                        <span className="font-medium text-sm">{opt.label}</span>
-                                    </div>
-                                )}
-                                renderOption={(opt) => (
-                                    <div className="flex items-center gap-3">
-                                        <img src={opt.icon} alt="" className="w-6 h-4 object-cover rounded-sm shadow-sm" />
-                                        <span className="font-medium text-sm">{opt.label}</span>
-                                    </div>
-                                )}
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                <Globe size={12}/> Weather Location
+                            </label>
+                            <CustomIconSelect 
+                                options={countryOptions} 
+                                value={trip.weatherLocation || COUNTRY_DATA.find(c => Math.abs(c.lat - (trip.lat || 0)) < 0.1 && Math.abs(c.lon - (trip.lon || 0)) < 0.1)?.name} 
+                                onChange={(val) => { 
+                                    const selected = COUNTRY_DATA.find(c => c.name === val); 
+                                    if(selected) { 
+                                        updateTrip({ lat: selected.lat, lon: selected.lon, weatherLocation: selected.name }); 
+                                    } 
+                                }} 
+                                placeholder="Select a location..." 
                             />
                             <p className="text-[10px] text-slate-400">Updates weather forecasts. Coordinates: {trip.lat?.toFixed(2)}, {trip.lon?.toFixed(2)}</p>
                         </div>
-
-                        {/* TRIP CURRENCY SELECTOR - NEW */}
+                        
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1"><DollarSign size={12}/> Trip Currency</label>
-                            <CustomIconSelect
-                                options={currencySelectOptions}
-                                value={trip.currency || 'USD'}
-                                onChange={(val) => updateTrip({ currency: val })}
-                                placeholder="Select a currency..."
-                                renderValue={(opt) => (
-                                    <div className="flex items-center gap-2">
-                                        <img src={opt.icon} alt="" className="w-5 h-3.5 object-cover rounded-sm shadow-sm" />
-                                        <span className="font-medium text-sm">{opt.label}</span>
-                                    </div>
-                                )}
-                                renderOption={(opt) => (
-                                    <div className="flex items-center gap-3">
-                                        <img src={opt.icon} alt="" className="w-6 h-4 object-cover rounded-sm shadow-sm" />
-                                        <span className="font-medium text-sm">{opt.label}</span>
-                                    </div>
-                                )}
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                <DollarSign size={12}/> Trip Currency
+                            </label>
+                            <CustomIconSelect 
+                                options={currencySelectOptions} 
+                                value={trip.currency || 'USD'} 
+                                onChange={(val) => updateTrip({ currency: val })} 
+                                placeholder="Select a currency..." 
                             />
                             <p className="text-[10px] text-slate-400">Sets the default currency for budgeting.</p>
                         </div>
-
-                        <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label><input type="text" value={trip.coverImage} onChange={(e) => updateTrip({ coverImage: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm dark:text-white"/></div>
-                         <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label><input type="date" value={trip.startDate} onChange={(e) => updateTrip({ startDate: e.target.value })} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"/></div>
                         
-                        {/* COMPANIONS SECTION */}
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label>
+                            <input 
+                                type="text" 
+                                value={trip.coverImage} 
+                                onChange={(e) => updateTrip({ coverImage: e.target.value })} 
+                                className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm dark:text-white"
+                            />
+                        </div>
+                        
+                         <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label>
+                            <input 
+                                type="date" 
+                                value={trip.startDate} 
+                                onChange={(e) => updateTrip({ startDate: e.target.value })} 
+                                className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                            />
+                        </div>
+                        
                         <div className="space-y-2">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label>
                             <div className="flex flex-wrap gap-2 mb-2">
-                                {trip.companions.map((c, i) => {
-                                    // Handle legacy string vs new object
-                                    const name = typeof c === 'string' ? c : c.name;
-                                    const photo = typeof c === 'object' ? c.photo : null;
+                                {trip.companions.map((c, i) => { 
+                                    const name = typeof c === 'string' ? c : c.name; 
+                                    const photo = typeof c === 'object' ? c.photo : null; 
                                     return (
                                         <div key={i} className="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm group pr-3 border border-slate-200 dark:border-slate-700 dark:text-slate-200">
                                             <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center text-[10px] font-bold">
                                                 {photo ? <img src={photo} className="w-full h-full object-cover" /> : name[0]}
                                             </div>
                                             <span className="font-medium">{name}</span>
-                                            <button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500"><X size={14} /></button>
+                                            <button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500">
+                                                <X size={14} />
+                                            </button>
                                         </div>
-                                    );
+                                    ); 
                                 })}
                             </div>
                             
-                            {/* Add Companion Form - MOBILE FIXED */}
                             <form onSubmit={handleAddCompanion} className="flex gap-2 items-center bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 w-full">
                                 <label className="cursor-pointer p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors relative group flex-shrink-0">
                                     {newCompanionPhoto ? (
@@ -1889,24 +1921,15 @@ export default function TravelApp() {
                                             <ImagePlus size={16} className="text-slate-400 group-hover:text-indigo-600 dark:text-slate-400 dark:group-hover:text-indigo-400" />
                                         </div>
                                     )}
-                                    <input 
-                                        type="file" 
-                                        accept="image/*" 
-                                        className="hidden" 
-                                        onChange={(e) => e.target.files?.[0] && setNewCompanionPhoto(e.target.files[0])}
-                                    />
+                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && setNewCompanionPhoto(e.target.files[0])}/>
                                 </label>
                                 <input 
-                                    value={newCompanionName}
-                                    onChange={(e) => setNewCompanionName(e.target.value)}
+                                    value={newCompanionName} 
+                                    onChange={(e) => setNewCompanionName(e.target.value)} 
                                     placeholder="Add name..." 
                                     className="flex-grow min-w-0 bg-transparent border-none outline-none text-sm font-medium placeholder:text-slate-400 dark:text-white h-10" 
                                 />
-                                <button 
-                                    type="submit" 
-                                    disabled={!newCompanionName.trim()} 
-                                    className="flex-shrink-0 bg-indigo-600 text-white h-9 px-4 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-500/30"
-                                >
+                                <button type="submit" disabled={!newCompanionName.trim()} className="flex-shrink-0 bg-indigo-600 text-white h-9 px-4 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-500/30">
                                     Add
                                 </button>
                             </form>
@@ -1914,19 +1937,7 @@ export default function TravelApp() {
                     </section>
                 </div>
               </Modal>
-             
-             {/* ... existing code ... */}
-             <Modal isOpen={showSignOutConfirm} onClose={() => setShowSignOutConfirm(false)} title="Sign Out">
-                <div className="space-y-4">
-                    <p className="text-slate-600 dark:text-slate-300">Are you sure you want to sign out?</p>
-                    <div className="flex gap-3 justify-end">
-                        <button onClick={() => setShowSignOutConfirm(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancel</button>
-                        <button onClick={() => signOut(auth)} className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors">Sign Out</button>
-                    </div>
-                </div>
-            </Modal>
             
-            {/* --- IMAGE EDIT MODAL --- */}
             <Modal isOpen={!!imageEditState} onClose={() => setImageEditState(null)} title="Change Activity Photo">
                 <div className="space-y-4">
                     <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center relative border border-slate-200 dark:border-slate-700">
@@ -1939,21 +1950,22 @@ export default function TravelApp() {
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Image URL</label>
                         <input 
                             value={imageEditState?.url || ''} 
-                            onChange={(e) => setImageEditState(prev => ({ ...prev, url: e.target.value }))}
-                            className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none text-sm border-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                            onChange={(e) => setImageEditState(prev => ({ ...prev, url: e.target.value }))} 
+                            className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none text-sm border-none focus:ring-2 focus:ring-indigo-500 dark:text-white" 
                             placeholder="https://..."
                         />
                         <p className="text-[10px] text-slate-400">Paste a direct link to an image (ending in .jpg, .png, etc.)</p>
                     </div>
                     <div className="flex gap-2 justify-end pt-2">
-                         <button onClick={() => setImageEditState(null)} className="px-4 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Cancel</button>
-                         <button onClick={() => {
-                             handleUpdateActivity(imageEditState.dayIdx, imageEditState.actId, 'image', imageEditState.url);
-                             setImageEditState(null);
-                         }} className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">Save Photo</button>
+                        <button onClick={() => setImageEditState(null)} className="px-4 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                            Cancel
+                        </button>
+                        <button onClick={() => { handleUpdateActivity(imageEditState.dayIdx, imageEditState.actId, 'image', imageEditState.url); setImageEditState(null); }} className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">
+                            Save Photo
+                        </button>
                     </div>
                 </div>
             </Modal>
         </div>
     );
-                  }
+      }
