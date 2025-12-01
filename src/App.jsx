@@ -253,6 +253,14 @@ const getTypeIcon = (type) => {
     }
 };
 
+// Safe date creator that ignores browser timezone and forces UTC
+const createUTCDate = (dateStr) => {
+    if(!dateStr) return new Date();
+    const parts = dateStr.split('-');
+    // Date.UTC(year, monthIndex, day)
+    return new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+};
+
 // --- CUSTOM UI COMPONENTS ---
 
 const CustomIconSelect = ({ options, value, onChange, placeholder }) => {
@@ -420,38 +428,46 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
             setIsError(false);
             setIsHistorical(false);
             try {
+                // FORCE UTC: Strictly parse the input string as UTC
                 const startStr = startDate || new Date().toISOString().split('T')[0];
-                const startObj = new Date(startStr);
-                const today = new Date();
+                const startObj = createUTCDate(startStr);
+                const today = new Date(); // Local time
                 
-                // Determine if we need historical or forecast data
+                // Calculate days difference
                 const diffTime = startObj - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
                 
-                const endObj = new Date(startObj);
-                endObj.setDate(endObj.getDate() + (daysCount > 1 ? daysCount : 7) + 2);
+                const isFuture = diffDays > 10;
+                const isPast = diffDays < -2;
+                const shouldUseHistorical = isFuture || isPast;
+
+                // Determine query range with safe shifts
+                let queryStart = new Date(startObj);
+
+                if (isFuture) {
+                    while (queryStart > today) {
+                        queryStart.setUTCFullYear(queryStart.getUTCFullYear() - 1);
+                    }
+                    if ((today - queryStart) / (1000 * 60 * 60 * 24) < 5) {
+                         queryStart.setUTCFullYear(queryStart.getUTCFullYear() - 1);
+                    }
+                } else if (isPast) {
+                    // For very old dates, maybe we want actual history, but Open-Meteo Archive handles it.
+                    // This logic mainly handles future "prediction" via past data.
+                }
+                
+                // End date calculation
+                const queryEnd = new Date(queryStart);
+                queryEnd.setUTCDate(queryStart.getUTCDate() + (daysCount > 1 ? daysCount : 7) + 2);
+                
+                const sDateStr = queryStart.toISOString().split('T')[0];
+                const eDateStr = queryEnd.toISOString().split('T')[0];
                 
                 let url = "";
-                let shouldUseHistorical = false;
-
-                // Thresholds for API capability
-                if (diffDays > 14 || diffDays < -5) {
-                    shouldUseHistorical = true;
-                    // Shift dates to 1 year ago
-                    const pastStart = new Date(startObj);
-                    pastStart.setFullYear(pastStart.getFullYear() - 1);
-                    const pastEnd = new Date(endObj);
-                    pastEnd.setFullYear(pastEnd.getFullYear() - 1);
-                    
-                    const pStartStr = pastStart.toISOString().split('T')[0];
-                    const pEndStr = pastEnd.toISOString().split('T')[0];
-                    
-                    url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${pStartStr}&end_date=${pEndStr}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&t=${Date.now()}`;
+                if (shouldUseHistorical) {
+                    url = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${sDateStr}&end_date=${eDateStr}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&t=${Date.now()}`;
                 } else {
-                     // Standard Forecast
-                     const fStartStr = startObj.toISOString().split('T')[0];
-                     const fEndStr = endObj.toISOString().split('T')[0];
-                     url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${fStartStr}&end_date=${fEndStr}&t=${Date.now()}`;
+                     url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${sDateStr}&end_date=${eDateStr}&t=${Date.now()}`;
                 }
 
                 const response = await fetch(url);
@@ -460,17 +476,15 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                 const data = await response.json();
                 const weatherMap = {};
                 
-                if (data.daily) {
+                if (data.daily && data.daily.time) {
                     data.daily.time.forEach((time, index) => {
-                        let keyDate = time;
-                        if (shouldUseHistorical) {
-                             // Reconstruct future date from past date
-                             const d = new Date(time);
-                             d.setFullYear(d.getFullYear() + 1);
-                             keyDate = d.toISOString().split('T')[0];
-                        }
+                         // Map back to trip dates using UTC math
+                         // The index from the API result corresponds to startObj + index days
+                         const targetDateForIndex = new Date(startObj);
+                         targetDateForIndex.setUTCDate(targetDateForIndex.getUTCDate() + index);
+                         const key = targetDateForIndex.toISOString().split('T')[0];
                         
-                        weatherMap[keyDate] = {
+                        weatherMap[key] = {
                             max: data.daily.temperature_2m_max[index],
                             min: data.daily.temperature_2m_min[index],
                             code: data.daily.weathercode[index]
@@ -520,7 +534,7 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
 
     return (
         <div className={`flex items-center text-xs font-medium ${textClass} mt-1 min-h-[16px]`}>
-             {isHistorical && realWeather && <span className="mr-1 text-[8px] uppercase font-bold tracking-wider opacity-70">Est.</span>}
+             {isHistorical && realWeather && <span className="mr-1 text-[8px] uppercase font-bold tracking-wider opacity-70 text-indigo-500">Est.</span>}
             <Icon size={12} className={`mr-1 ${tempText === 'Fetching' ? 'animate-spin' : ''}`} /> {tempText}
         </div>
     );
@@ -1205,18 +1219,16 @@ export default function TravelApp() {
 
     const handleAddDay = () => {
         const lastDay = trip.days[trip.days.length - 1];
-        let nextDate = new Date();
-        let nextTitle = `Day ${trip.days.length + 1}`;
-        if (lastDay && lastDay.date) { 
-            const lastDateObj = new Date(lastDay.date); 
-            lastDateObj.setDate(lastDateObj.getDate() + 1); 
-            nextDate = lastDateObj; 
-        }
+        // CRITICAL: use createUTCDate to avoid timezone shifts
+        const lastDate = lastDay?.date ? createUTCDate(lastDay.date) : new Date();
+        const nextDate = new Date(lastDate); 
+        nextDate.setUTCDate(nextDate.getUTCDate() + 1);
+        
         const dateStr = nextDate.toISOString().split('T')[0];
         const newDay = { 
             id: Math.random().toString(36).substr(2, 9), 
             date: dateStr, 
-            title: nextTitle, 
+            title: `Day ${trip.days.length + 1}`, 
             activities: [] 
         };
         updateTrip({ days: [...trip.days, newDay] });
@@ -1885,7 +1897,16 @@ export default function TravelApp() {
                             <input 
                                 type="date" 
                                 value={trip.startDate} 
-                                onChange={(e) => updateTrip({ startDate: e.target.value })} 
+                                onChange={(e) => {
+                                    const newStart = e.target.value;
+                                    // CRITICAL: Force UTC calculation
+                                    const newDays = trip.days.map((day, idx) => {
+                                        const d = createUTCDate(newStart);
+                                        d.setUTCDate(d.getUTCDate() + idx);
+                                        return { ...day, date: d.toISOString().split('T')[0] };
+                                    });
+                                    updateTrip({ startDate: newStart, days: newDays });
+                                }} 
                                 className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
                             />
                         </div>
@@ -1928,6 +1949,7 @@ export default function TravelApp() {
                                     onChange={(e) => setNewCompanionName(e.target.value)} 
                                     placeholder="Add name..." 
                                     className="flex-grow min-w-0 bg-transparent border-none outline-none text-sm font-medium placeholder:text-slate-400 dark:text-white h-10" 
+                                    maxLength={20}
                                 />
                                 <button type="submit" disabled={!newCompanionName.trim()} className="flex-shrink-0 bg-indigo-600 text-white h-9 px-4 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-500/30">
                                     Add
@@ -1968,4 +1990,4 @@ export default function TravelApp() {
             </Modal>
         </div>
     );
-      }
+}
