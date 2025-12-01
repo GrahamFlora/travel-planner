@@ -858,14 +858,22 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
         if (trip?.currency) setTargetCurrency(trip.currency); 
     }, [trip?.currency]);
 
+    // FILTERED EXPENSES: Only show those for this trip, OR those without a tripId (legacy support)
+    const tripExpenses = useMemo(() => {
+        return expenses.filter(e => e.tripId === trip.id || (!e.tripId && expenses.length > 0)); 
+    }, [expenses, trip.id]);
+
     const handleSaveExpense = async (newExp) => { 
+        // Ensure new expenses get linked to this trip
+        const expenseWithId = { ...newExp, tripId: trip.id };
+        
         let updated;
         const existingIndex = expenses.findIndex(e => e.id === newExp.id);
         if (existingIndex >= 0) { 
             updated = [...expenses]; 
-            updated[existingIndex] = newExp; 
+            updated[existingIndex] = expenseWithId; 
         } else { 
-            updated = [...expenses, newExp]; 
+            updated = [...expenses, expenseWithId]; 
         }
         setExpenses(updated); 
         setIsAddModalOpen(false); 
@@ -891,20 +899,21 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
 
     const convertToBase = (amt, code) => (amt / (EXCHANGE_RATES[code] || 1)) * EXCHANGE_RATES[BASE_CURRENCY];
     
-    const totalBase = expenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
+    // Only calculate total for filtered expenses
+    const totalBase = tripExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
     const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
     const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
     const totalDisplay = totalBase * (targetRate / baseRate);
 
     const expensesByDate = useMemo(() => {
         const grouped = {};
-        expenses.forEach(e => { 
+        tripExpenses.forEach(e => { 
             const d = e.date || 'Unscheduled'; 
             if (!grouped[d]) grouped[d] = []; 
             grouped[d].push(e); 
         });
         return grouped;
-    }, [expenses]);
+    }, [tripExpenses]);
 
     const sortedDates = Object.keys(expensesByDate).sort();
 
@@ -912,7 +921,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
         <div className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
                 <div className="relative z-10">
-                    <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
+                    <p className="text-slate-400 text-sm font-medium mb-1">Trip Cost</p>
                     <h1 className="text-4xl font-black mb-6">{formatCurrency(totalDisplay, targetCurrency)}</h1>
                     <div className="flex gap-2">
                          <button onClick={() => isEditMode && setIsAddModalOpen(true)} disabled={!isEditMode} className="bg-white text-black px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-100 disabled:opacity-50">
@@ -925,8 +934,8 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                 </div>
             </div>
             <div className="space-y-6">
-                {expenses.length === 0 ? ( 
-                    <div className="text-center py-10 text-slate-400"><Wallet size={48} className="mx-auto mb-2 opacity-20" /><p>No expenses yet.</p></div> 
+                {tripExpenses.length === 0 ? ( 
+                    <div className="text-center py-10 text-slate-400"><Wallet size={48} className="mx-auto mb-2 opacity-20" /><p>No expenses for this trip yet.</p></div> 
                 ) : ( 
                     sortedDates.map(date => {
                         const dailyExpenses = expensesByDate[date];
@@ -1258,7 +1267,18 @@ export default function TravelApp() {
         if (!trip) return;
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         try { 
-            const cleanTrip = JSON.parse(JSON.stringify(trip)); 
+            // 1. Fetch current budget expenses for this user
+            const budgetSnap = await getDoc(getUserBudgetRef(user.uid));
+            let sharedExpenses = [];
+            
+            if (budgetSnap.exists()) {
+                const allExpenses = budgetSnap.data().expenses || [];
+                // 2. Filter expenses that match the current trip ID (or are legacy orphans)
+                sharedExpenses = allExpenses.filter(e => e.tripId === trip.id || (!e.tripId && trips.length === 1));
+            }
+            
+            // 3. Create payload with expenses included
+            const cleanTrip = JSON.parse(JSON.stringify({ ...trip, sharedExpenses })); 
             await setDoc(getSharedTripRef(code), cleanTrip); 
             setSharedCode(code); 
         } catch (error) { 
@@ -1274,13 +1294,43 @@ export default function TravelApp() {
         try { 
             const docSnap = await getDoc(getSharedTripRef(code)); 
             if (docSnap.exists()) { 
-                const data = docSnap.data(); 
+                const data = docSnap.data();
+                const newTripId = Math.random().toString(36).substr(2, 9);
+                
+                // 1. Extract expenses
+                const sharedExpenses = data.sharedExpenses || [];
+                const tripData = { ...data };
+                delete tripData.sharedExpenses;
+                
+                // 2. Add trip
                 const newTrip = { 
-                    ...data, 
-                    id: Math.random().toString(36).substr(2, 9), 
+                    ...tripData, 
+                    id: newTripId, 
                     title: `${data.title} (Imported)` 
                 }; 
+                
                 setTrips(prev => [...prev, newTrip]); 
+                
+                // 3. Import Expenses (if any)
+                if (sharedExpenses.length > 0) {
+                     // Fetch my current budget
+                     const myBudgetSnap = await getDoc(getUserBudgetRef(user.uid));
+                     let myExpenses = [];
+                     if (myBudgetSnap.exists()) myExpenses = myBudgetSnap.data().expenses || [];
+                     
+                     // Re-map shared expenses to the new Trip ID
+                     const newExpenses = sharedExpenses.map(exp => ({
+                         ...exp,
+                         id: Math.random().toString(36).substr(2, 9), // new ID to prevent collision
+                         tripId: newTripId // link to new imported trip
+                     }));
+                     
+                     // Save merged budget
+                     await setDoc(getUserBudgetRef(user.uid), { 
+                        expenses: [...myExpenses, ...newExpenses] 
+                     }, { merge: true });
+                }
+
                 setModalOpen(null); 
                 alert("Trip Imported Successfully!"); 
             } else { 
@@ -1990,4 +2040,4 @@ export default function TravelApp() {
             </Modal>
         </div>
     );
-}
+      }
