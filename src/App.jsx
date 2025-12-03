@@ -292,7 +292,8 @@ const CustomIconSelect = ({ options, value, onChange, placeholder }) => {
                         <span className="font-bold">{selectedOption.label}</span>
                     </div>
                 ) : (
-                    <span className="text-slate-400">{placeholder}</span>
+                    // ACCESSIBILITY FIX: Darkened text-slate-400 to text-slate-500
+                    <span className="text-slate-500">{placeholder}</span>
                 )}
                 <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -398,18 +399,21 @@ const LoginPage = ({ onLogin }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
             {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
-            <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300">
+            {/* ACCESSIBILITY FIX: Changed to <main> landmark */}
+            <main className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300">
                 <div className="flex justify-center mb-8"><Logo size="lg" /></div>
                 <h2 className="text-2xl font-bold text-center mb-2 text-slate-900 dark:text-white">{isSignUp ? "Create your account" : "Welcome back"}</h2>
+                {/* ACCESSIBILITY FIX: Darkened text-slate-400 to text-slate-500 for better contrast */}
                 <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">{isSignUp ? "Start planning your next adventure." : "Enter your details to access your trips."}</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 text-xs rounded-xl flex items-center gap-2"><AlertTriangle size={14} /> {error}</div>}
-                    <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Email</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="you@example.com" /></div>
-                    <div className="space-y-1"><label className="text-xs font-bold text-slate-400 uppercase">Password</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="••••••••" /></div>
+                    {/* ACCESSIBILITY FIX: Darkened labels */}
+                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Email</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="you@example.com" /></div>
+                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Password</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="••••••••" /></div>
                     <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">{loading && <Loader2 className="animate-spin" size={20} />} {isSignUp ? "Sign Up" : "Sign In"}</button>
                 </form>
                 <div className="mt-6 text-center"><button onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">{isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}</button></div>
-            </div>
+            </main>
         </div>
     );
 };
@@ -512,12 +516,13 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     const realWeather = weatherData[date];
     let Icon = Sun;
     let tempText = "Loading...";
-    let textClass = "text-slate-400";
+    let textClass = "text-slate-400"; // Kept lighter for disabled/loading state
     
     if (realWeather) {
         if (realWeather.code > 3) Icon = CloudIcon;
         if (realWeather.code > 50) Icon = CloudRain;
         tempText = `${Math.round(realWeather.min)}°/${Math.round(realWeather.max)}°`;
+        textClass = "text-slate-600 dark:text-slate-400"; // Darker when loaded
     } else {
         if (isError) {
              Icon = WifiOff;
@@ -578,7 +583,8 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions })
             <div className="text-right flex items-center space-x-3">
                 <p className="font-black text-lg text-slate-900 dark:text-white">
                     {inputCurrencyObj.symbol}{Number(amountInput).toFixed(2)}
-                    <span className="text-[10px] font-bold text-slate-400 ml-1">{inputCurrencyObj.code}</span>
+                    {/* ACCESSIBILITY FIX: Darkened code text */}
+                    <span className="text-[10px] font-bold text-slate-500 ml-1">{inputCurrencyObj.code}</span>
                 </p>
                 {isEditMode && (
                     <div className="flex gap-1">
@@ -649,7 +655,8 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             <h3 className="text-lg font-bold dark:text-white">{initialData ? 'Edit Expense' : 'Log Expense'}</h3>
             
             <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-400 uppercase">Description</label>
+                {/* ACCESSIBILITY FIX: Darkened text-slate-400 to text-slate-500 */}
+                <label className="text-xs font-bold text-slate-500 uppercase">Description</label>
                 <input 
                     type="text" 
                     value={name} 
@@ -662,7 +669,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             
             <div className="grid grid-cols-3 gap-3">
                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase">Currency</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase">Currency</label>
                     <CustomIconSelect 
                         options={selectOptions} 
                         value={inputCurrencyCode} 
@@ -671,7 +678,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                     />
                 </div>
                 <div className="space-y-1 col-span-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase">Amount</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase">Amount</label>
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{inputCurrencySymbol}</span>
                         {/* PADDING FIX HERE (pl-16) */}
@@ -689,7 +696,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             </div>
             
             <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-400 uppercase">Date</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">Date</label>
                 <input 
                     type="date" 
                     value={date} 
@@ -699,7 +706,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             </div>
             
             <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase">Category</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">Category</label>
                 <IconPicker selected={category} onSelect={setCategory} />
             </div>
             
@@ -730,7 +737,8 @@ const CalendarView = ({ trip, onSelectDay }) => {
     trip.days.forEach((d, idx) => { tripDayMap[d.date] = { ...d, idx }; });
 
     return (
-        <div className="max-w-6xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
+        // ACCESSIBILITY FIX: Changed wrapper to <main>
+        <main className="max-w-6xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white">
@@ -836,7 +844,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
                     )}
                 </div>
              </div>
-        </div>
+        </main>
     );
 };
 
@@ -918,7 +926,8 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const sortedDates = Object.keys(expensesByDate).sort();
 
     return (
-        <div className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
+        // ACCESSIBILITY FIX: Changed wrapper to <main>
+        <main className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
                 <div className="relative z-10">
                     <p className="text-slate-400 text-sm font-medium mb-1">Trip Cost</p>
@@ -967,14 +976,15 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
             <Modal isOpen={isAddModalOpen} onClose={handleCloseModal} title={editingExpense ? "Edit Expense" : "New Expense"}>
                 <AddExpenseForm onAddExpense={handleSaveExpense} currencyOptions={CURRENCY_OPTIONS} convertToBase={convertToBase} initialData={editingExpense} />
             </Modal>
-        </div>
+        </main>
     );
 };
 
 const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 overflow-x-hidden">
-            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+            {/* ACCESSIBILITY FIX: Changed wrapper to <main> */}
+            <main className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                  <div className="flex justify-between items-center">
                     <Logo size="lg" />
                     <div className="flex items-center gap-3">
@@ -1023,7 +1033,7 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
                         <span className="font-bold">Import Trip</span>
                     </button>
                  </div>
-            </div>
+            </main>
         </div>
     );
 };
@@ -1066,19 +1076,32 @@ export default function TravelApp() {
     const [newCompanionPhoto, setNewCompanionPhoto] = useState(null);
     const dayRefs = useRef([]);
 
-    // --- DYNAMIC TITLE HOOK ---
+    // --- DYNAMIC TITLE & SEO HOOK ---
     const trip = trips.find(t => t.id === currentTripId);
     
     useEffect(() => {
         let title = "HorizonPlanner";
+        let desc = "Plan your dream vacation with HorizonPlanner. Manage itinerary, budget, and companions in one place.";
+        
         if (view === 'dashboard') {
             title = "My Trips - HorizonPlanner";
         } else if (trip) {
             title = `${trip.title} - HorizonPlanner`;
+            desc = `View the itinerary for ${trip.title}, starting ${trip.startDate}. Includes ${trip.days.length} days of activities.`;
             if (viewMode === 'budget') title = `Budget: ${trip.title}`;
             if (viewMode === 'calendar') title = `Calendar: ${trip.title}`;
         }
         document.title = title;
+        
+        // SEO FIX: Dynamic Meta Description Injection
+        let metaDescription = document.querySelector('meta[name="description"]');
+        if (!metaDescription) {
+            metaDescription = document.createElement('meta');
+            metaDescription.name = "description";
+            document.head.appendChild(metaDescription);
+        }
+        metaDescription.setAttribute("content", desc);
+        
     }, [view, trip, viewMode]);
 
     useEffect(() => {
@@ -2040,4 +2063,4 @@ export default function TravelApp() {
             </Modal>
         </div>
     );
-      }
+}
