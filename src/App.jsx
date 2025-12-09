@@ -59,10 +59,11 @@ import {
   Clock, 
   RefreshCw, 
   WifiOff, 
-  History
+  History,
+  Link as LinkIcon,
+  Eye
 } from 'lucide-react';
 
-// --- FIREBASE IMPORTS ---
 import { initializeApp } from "firebase/app";
 import { 
     getAuth, 
@@ -233,6 +234,54 @@ const compressImage = async (file) => {
     });
 };
 
+// --- ROBUST CLIPBOARD HELPER ---
+const copyToClipboard = (text, onSuccess) => {
+    // 1. Try the modern API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                if (onSuccess) onSuccess();
+                else alert("Copied to clipboard!");
+            })
+            .catch((err) => {
+                console.warn("Clipboard API failed, trying fallback...", err);
+                fallbackCopy(text, onSuccess);
+            });
+    } else {
+        // 2. If API not available, use fallback
+        fallbackCopy(text, onSuccess);
+    }
+};
+
+const fallbackCopy = (text, onSuccess) => {
+    try {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Ensure it's not visible but part of DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+            if (onSuccess) onSuccess();
+            else alert("Copied to clipboard!");
+        } else {
+             prompt("Copy this link manually:", text);
+        }
+    } catch (err) {
+        console.error("Fallback copy failed", err);
+        prompt("Copy this link manually:", text);
+    }
+};
+
 const getTypeColor = (type) => {
   switch (type) {
     case 'food': return 'border-orange-200 text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-800/50';
@@ -292,7 +341,6 @@ const CustomIconSelect = ({ options, value, onChange, placeholder }) => {
                         <span className="font-bold">{selectedOption.label}</span>
                     </div>
                 ) : (
-                    // ACCESSIBILITY FIX: Darkened text-slate-400 to text-slate-500
                     <span className="text-slate-500">{placeholder}</span>
                 )}
                 <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -399,15 +447,12 @@ const LoginPage = ({ onLogin }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
             {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
-            {/* ACCESSIBILITY FIX: Changed to <main> landmark */}
             <main className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300">
                 <div className="flex justify-center mb-8"><Logo size="lg" /></div>
                 <h2 className="text-2xl font-bold text-center mb-2 text-slate-900 dark:text-white">{isSignUp ? "Create your account" : "Welcome back"}</h2>
-                {/* ACCESSIBILITY FIX: Darkened text-slate-400 to text-slate-500 for better contrast */}
                 <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">{isSignUp ? "Start planning your next adventure." : "Enter your details to access your trips."}</p>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 text-xs rounded-xl flex items-center gap-2"><AlertTriangle size={14} /> {error}</div>}
-                    {/* ACCESSIBILITY FIX: Darkened labels */}
                     <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Email</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="you@example.com" /></div>
                     <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Password</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="••••••••" /></div>
                     <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">{loading && <Loader2 className="animate-spin" size={20} />} {isSignUp ? "Sign Up" : "Sign In"}</button>
@@ -516,13 +561,13 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     const realWeather = weatherData[date];
     let Icon = Sun;
     let tempText = "Loading...";
-    let textClass = "text-slate-400"; // Kept lighter for disabled/loading state
+    let textClass = "text-slate-400";
     
     if (realWeather) {
         if (realWeather.code > 3) Icon = CloudIcon;
         if (realWeather.code > 50) Icon = CloudRain;
         tempText = `${Math.round(realWeather.min)}°/${Math.round(realWeather.max)}°`;
-        textClass = "text-slate-600 dark:text-slate-400"; // Darker when loaded
+        textClass = "text-slate-600 dark:text-slate-400"; 
     } else {
         if (isError) {
              Icon = WifiOff;
@@ -562,12 +607,25 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
   );
 };
 
-const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions }) => {
+const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, targetCurrency }) => {
     const inputCurrencyCode = expense.inputCurrencyCode || BASE_CURRENCY;
     const amountInput = expense.amountInput !== undefined ? expense.amountInput : expense.amount;
     const inputCurrencyObj = currencyOptions.find(c => c.code === inputCurrencyCode) || { symbol: '', code: inputCurrencyCode };
     const catObj = CATEGORY_ICONS.find(c => c.id === expense.category) || CATEGORY_ICONS[8];
     const Icon = catObj.icon;
+
+    // --- NEW: Dynamic Conversion Calculation ---
+    const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
+    const inputRate = EXCHANGE_RATES[inputCurrencyCode] || 1;
+    const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
+    
+    // Logic: Convert Input -> Base -> Target
+    const amountInBase = amountInput / inputRate * baseRate; 
+    const amountInTarget = amountInBase * (targetRate / baseRate);
+    
+    // Should we show conversion? Only if currencies differ.
+    const showConversion = inputCurrencyCode !== targetCurrency;
+    const targetCurrencyObj = currencyOptions.find(c => c.code === targetCurrency) || { symbol: targetCurrency };
 
     return (
         <div className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center transition-all hover:shadow-md`}>
@@ -581,13 +639,19 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions })
                 </div>
             </div>
             <div className="text-right flex items-center space-x-3">
-                <p className="font-black text-lg text-slate-900 dark:text-white">
-                    {inputCurrencyObj.symbol}{Number(amountInput).toFixed(2)}
-                    {/* ACCESSIBILITY FIX: Darkened code text */}
-                    <span className="text-[10px] font-bold text-slate-500 ml-1">{inputCurrencyObj.code}</span>
-                </p>
+                <div className="flex flex-col items-end">
+                    <p className="font-black text-lg text-slate-900 dark:text-white leading-tight">
+                        {inputCurrencyObj.symbol}{Number(amountInput).toFixed(2)}
+                        <span className="text-[10px] font-bold text-slate-500 ml-1">{inputCurrencyObj.code}</span>
+                    </p>
+                    {showConversion && (
+                         <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                            ≈ {targetCurrencyObj.symbol}{Number(amountInTarget).toFixed(2)} {targetCurrency}
+                         </p>
+                    )}
+                </div>
                 {isEditMode && (
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 ml-2">
                         <button onClick={(e) => { e.stopPropagation(); onEdit(expense); }} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors">
                             <Pencil size={16} />
                         </button>
@@ -603,7 +667,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions })
 
 // --- FORMS ---
 
-const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialData }) => {
+const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialData, targetCurrency }) => {
     const [name, setName] = useState('');
     const [amountInput, setAmountInput] = useState('');
     const [category, setCategory] = useState('food');
@@ -619,6 +683,13 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             setDate(initialData.date || new Date().toISOString().split('T')[0]);
         }
     }, [initialData]);
+
+    // --- NEW: Live Conversion Logic ---
+    const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
+    const inputRate = EXCHANGE_RATES[inputCurrencyCode] || 1;
+    // Calculate display amount: Amount / InputRate * TargetRate
+    const convertedValue = amountInput ? (Number(amountInput) / inputRate * targetRate) : 0;
+    const targetSymbol = currencyOptions.find(c => c.code === targetCurrency)?.symbol || targetCurrency;
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -655,7 +726,6 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             <h3 className="text-lg font-bold dark:text-white">{initialData ? 'Edit Expense' : 'Log Expense'}</h3>
             
             <div className="space-y-1">
-                {/* ACCESSIBILITY FIX: Darkened text-slate-400 to text-slate-500 */}
                 <label className="text-xs font-bold text-slate-500 uppercase">Description</label>
                 <input 
                     type="text" 
@@ -681,16 +751,21 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                     <label className="text-xs font-bold text-slate-500 uppercase">Amount</label>
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{inputCurrencySymbol}</span>
-                        {/* PADDING FIX HERE (pl-16) */}
                         <input 
                             type="number" 
                             step="0.01" 
                             value={amountInput} 
                             onChange={(e) => setAmountInput(e.target.value)} 
-                            className="w-full h-12 bg-slate-100 dark:bg-slate-700 rounded-xl pl-16 pr-4 outline-none font-mono font-bold text-lg focus:ring-2 focus:ring-indigo-500 dark:text-white" 
+                            className="w-full h-12 bg-slate-100 dark:bg-slate-700 rounded-xl pl-16 pr-24 outline-none font-mono font-bold text-lg focus:ring-2 focus:ring-indigo-500 dark:text-white" 
                             placeholder="0.00" 
                             required
                         />
+                        {/* --- NEW: Real-time Conversion Badge --- */}
+                        {amountInput && inputCurrencyCode !== targetCurrency && (
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-lg pointer-events-none">
+                                ≈ {targetSymbol}{convertedValue.toFixed(2)}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -737,7 +812,6 @@ const CalendarView = ({ trip, onSelectDay }) => {
     trip.days.forEach((d, idx) => { tripDayMap[d.date] = { ...d, idx }; });
 
     return (
-        // ACCESSIBILITY FIX: Changed wrapper to <main>
         <main className="max-w-6xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-6">
@@ -866,15 +940,12 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
         if (trip?.currency) setTargetCurrency(trip.currency); 
     }, [trip?.currency]);
 
-    // FILTERED EXPENSES: Only show those for this trip, OR those without a tripId (legacy support)
     const tripExpenses = useMemo(() => {
         return expenses.filter(e => e.tripId === trip.id || (!e.tripId && expenses.length > 0)); 
     }, [expenses, trip.id]);
 
     const handleSaveExpense = async (newExp) => { 
-        // Ensure new expenses get linked to this trip
         const expenseWithId = { ...newExp, tripId: trip.id };
-        
         let updated;
         const existingIndex = expenses.findIndex(e => e.id === newExp.id);
         if (existingIndex >= 0) { 
@@ -907,7 +978,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
 
     const convertToBase = (amt, code) => (amt / (EXCHANGE_RATES[code] || 1)) * EXCHANGE_RATES[BASE_CURRENCY];
     
-    // Only calculate total for filtered expenses
     const totalBase = tripExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
     const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
     const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
@@ -926,19 +996,21 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const sortedDates = Object.keys(expensesByDate).sort();
 
     return (
-        // ACCESSIBILITY FIX: Changed wrapper to <main>
         <main className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
                 <div className="relative z-10">
-                    <p className="text-slate-400 text-sm font-medium mb-1">Trip Cost</p>
+                    <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
                     <h1 className="text-4xl font-black mb-6">{formatCurrency(totalDisplay, targetCurrency)}</h1>
                     <div className="flex gap-2">
                          <button onClick={() => isEditMode && setIsAddModalOpen(true)} disabled={!isEditMode} className="bg-white text-black px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-100 disabled:opacity-50">
                             <Plus size={16} /> Add Expense
                          </button>
-                         <select value={targetCurrency} onChange={e => setTargetCurrency(e.target.value)} className="bg-white/10 text-white border border-white/20 px-3 py-2 rounded-xl text-sm outline-none appearance-none font-bold">
-                            {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code} className="text-black">{c.code}</option>)}
-                         </select>
+                         <div className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-xl border border-white/20">
+                             <span className="text-[10px] font-bold text-slate-400 uppercase">Display:</span>
+                             <select value={targetCurrency} onChange={e => setTargetCurrency(e.target.value)} className="bg-transparent text-white text-sm outline-none appearance-none font-bold cursor-pointer">
+                                {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code} className="text-black">{c.code}</option>)}
+                             </select>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -964,7 +1036,8 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                                             onDelete={handleDelete} 
                                             onEdit={handleEditStart} 
                                             isEditMode={isEditMode} 
-                                            currencyOptions={CURRENCY_OPTIONS} 
+                                            currencyOptions={CURRENCY_OPTIONS}
+                                            targetCurrency={targetCurrency} // PASS DOWN TARGET CURRENCY
                                         />
                                     ))}
                                 </div>
@@ -974,7 +1047,13 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                 )}
             </div>
             <Modal isOpen={isAddModalOpen} onClose={handleCloseModal} title={editingExpense ? "Edit Expense" : "New Expense"}>
-                <AddExpenseForm onAddExpense={handleSaveExpense} currencyOptions={CURRENCY_OPTIONS} convertToBase={convertToBase} initialData={editingExpense} />
+                <AddExpenseForm 
+                    onAddExpense={handleSaveExpense} 
+                    currencyOptions={CURRENCY_OPTIONS} 
+                    convertToBase={convertToBase} 
+                    initialData={editingExpense} 
+                    targetCurrency={targetCurrency} // Pass target currency
+                />
             </Modal>
         </main>
     );
@@ -983,7 +1062,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
 const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 overflow-x-hidden">
-            {/* ACCESSIBILITY FIX: Changed wrapper to <main> */}
             <main className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
                  <div className="flex justify-between items-center">
                     <Logo size="lg" />
@@ -1076,6 +1154,45 @@ export default function TravelApp() {
     const [newCompanionPhoto, setNewCompanionPhoto] = useState(null);
     const dayRefs = useRef([]);
 
+    // --- URL PARAM LISTENER FOR DIRECT SHARING ---
+    useEffect(() => {
+        const checkShareParams = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const shareId = urlParams.get('shareId');
+            
+            if (shareId && !user) {
+                // User is NOT logged in but has a code. Auto-login anonymously.
+                try {
+                    await signInAnonymously(auth);
+                    // We let the authStateChanged listener handle the next steps (fetching trips)
+                    // But we need to switch view to 'import' or 'trip' once loaded.
+                    // For now, let's store it to auto-trigger import modal
+                    window.localStorage.setItem('pendingShareId', shareId);
+                } catch (e) {
+                    console.error("Auto-login failed", e);
+                }
+            } else if (shareId && user) {
+                 window.localStorage.setItem('pendingShareId', shareId);
+            }
+        };
+        checkShareParams();
+    }, [user]);
+
+    // Handle Pending Share ID after login
+    useEffect(() => {
+        if (user && isDataLoaded) {
+            const pending = window.localStorage.getItem('pendingShareId');
+            if (pending) {
+                // Auto-trigger the import process (or show modal pre-filled)
+                setModalOpen('import');
+                // We will leave the input logic to the modal, but pre-filling it would be nice.
+                // For simplicity in this structure, we just open the modal so they see where to go.
+                // Ideally, we'd auto-fetch, but 'import' requires user confirmation usually.
+            }
+        }
+    }, [user, isDataLoaded]);
+
+
     // --- DYNAMIC TITLE & SEO HOOK ---
     const trip = trips.find(t => t.id === currentTripId);
     
@@ -1093,7 +1210,6 @@ export default function TravelApp() {
         }
         document.title = title;
         
-        // SEO FIX: Dynamic Meta Description Injection
         let metaDescription = document.querySelector('meta[name="description"]');
         if (!metaDescription) {
             metaDescription = document.createElement('meta');
@@ -1355,6 +1471,7 @@ export default function TravelApp() {
                 }
 
                 setModalOpen(null); 
+                window.localStorage.removeItem('pendingShareId'); // Clear pending code
                 alert("Trip Imported Successfully!"); 
             } else { 
                 alert("Trip not found! Check the code."); 
@@ -1451,10 +1568,15 @@ export default function TravelApp() {
                                 <Download size={24} />
                             </div>
                             <h4 className="font-bold dark:text-white">Import a Friend's Trip</h4>
-                            <p className="text-sm text-slate-500 mb-4">Enter the 6-character code to clone a shared itinerary.</p>
+                            <p className="text-sm text-slate-500 mb-4">
+                                {window.localStorage.getItem('pendingShareId') 
+                                    ? "We found a share code! Click Import to view." 
+                                    : "Enter the 6-character code to clone a shared itinerary."}
+                            </p>
                             <form onSubmit={handleImportTrip} className="flex gap-2">
                                 <input 
                                     name="shareId" 
+                                    defaultValue={window.localStorage.getItem('pendingShareId') || ''}
                                     placeholder="e.g. A7B2X9" 
                                     className="flex-grow bg-white dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" 
                                     required 
@@ -1539,7 +1661,7 @@ export default function TravelApp() {
                             </button>
                             
                             {isMenuOpen && (
-                                <div className="absolute top-14 right-0 w-48 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 z-50 animate-in slide-in-from-top-2">
+                                <div className="absolute top-14 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 z-50 animate-in slide-in-from-top-2">
                                      <div className="md:hidden flex items-center gap-2 p-2 border-b border-slate-100 dark:border-slate-800 mb-1">
                                         <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
                                             <User size={12} className="text-indigo-600" />
@@ -1856,11 +1978,26 @@ export default function TravelApp() {
                                 <code className="text-3xl font-mono font-black tracking-widest text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-800">
                                     {sharedCode}
                                 </code>
-                                <button onClick={() => { navigator.clipboard.writeText(sharedCode); alert("Copied!"); }} className="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl transition-colors">
+                                <button onClick={() => copyToClipboard(sharedCode, () => alert("Code copied!"))} className="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl transition-colors">
                                     <Copy size={20} />
                                 </button>
                             </div>
-                            <p className="text-xs text-slate-400">They can use "Import" to load a copy of your trip.</p>
+
+                            {/* --- NEW: Copy Direct Link Button --- */}
+                            <div className="pt-2">
+                                <p className="text-xs text-slate-500 mb-2 font-medium">OR Share direct link (No Login Required)</p>
+                                <button 
+                                    onClick={() => {
+                                        const url = `${window.location.origin}${window.location.pathname}?shareId=${sharedCode}`;
+                                        copyToClipboard(url, () => alert("Link Copied! Friends can view without logging in."));
+                                    }}
+                                    className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                >
+                                    <LinkIcon size={16} /> Copy Instant Access Link
+                                </button>
+                            </div>
+
+                            <p className="text-xs text-slate-400">They can also use "Import" to load a copy of your trip.</p>
                         </div>
                     ) : (
                         <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-center">
