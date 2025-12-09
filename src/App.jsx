@@ -61,7 +61,8 @@ import {
   WifiOff, 
   History,
   Link as LinkIcon,
-  Eye
+  Eye,
+  Banknote
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -236,19 +237,11 @@ const compressImage = async (file) => {
 
 // --- ROBUST CLIPBOARD HELPER ---
 const copyToClipboard = (text, onSuccess) => {
-    // 1. Try the modern API first
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text)
-            .then(() => {
-                if (onSuccess) onSuccess();
-                else alert("Copied to clipboard!");
-            })
-            .catch((err) => {
-                console.warn("Clipboard API failed, trying fallback...", err);
-                fallbackCopy(text, onSuccess);
-            });
+            .then(() => { if (onSuccess) onSuccess(); else alert("Copied to clipboard!"); })
+            .catch((err) => { console.warn("Clipboard API failed, trying fallback...", err); fallbackCopy(text, onSuccess); });
     } else {
-        // 2. If API not available, use fallback
         fallbackCopy(text, onSuccess);
     }
 };
@@ -257,25 +250,16 @@ const fallbackCopy = (text, onSuccess) => {
     try {
         const textArea = document.createElement("textarea");
         textArea.value = text;
-        
-        // Ensure it's not visible but part of DOM
         textArea.style.position = "fixed";
         textArea.style.left = "-9999px";
         textArea.style.top = "0";
         document.body.appendChild(textArea);
-        
         textArea.focus();
         textArea.select();
-        
         const successful = document.execCommand('copy');
         document.body.removeChild(textArea);
-        
-        if (successful) {
-            if (onSuccess) onSuccess();
-            else alert("Copied to clipboard!");
-        } else {
-             prompt("Copy this link manually:", text);
-        }
+        if (successful) { if (onSuccess) onSuccess(); else alert("Copied to clipboard!"); } 
+        else { prompt("Copy this link manually:", text); }
     } catch (err) {
         console.error("Fallback copy failed", err);
         prompt("Copy this link manually:", text);
@@ -302,11 +286,9 @@ const getTypeIcon = (type) => {
     }
 };
 
-// Safe date creator that ignores browser timezone and forces UTC
 const createUTCDate = (dateStr) => {
     if(!dateStr) return new Date();
     const parts = dateStr.split('-');
-    // Date.UTC(year, monthIndex, day)
     return new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
 };
 
@@ -477,12 +459,10 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
             setIsError(false);
             setIsHistorical(false);
             try {
-                // FORCE UTC: Strictly parse the input string as UTC
                 const startStr = startDate || new Date().toISOString().split('T')[0];
                 const startObj = createUTCDate(startStr);
                 const today = new Date(); // Local time
                 
-                // Calculate days difference
                 const diffTime = startObj - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
                 
@@ -490,22 +470,12 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                 const isPast = diffDays < -2;
                 const shouldUseHistorical = isFuture || isPast;
 
-                // Determine query range with safe shifts
                 let queryStart = new Date(startObj);
-
                 if (isFuture) {
-                    while (queryStart > today) {
-                        queryStart.setUTCFullYear(queryStart.getUTCFullYear() - 1);
-                    }
-                    if ((today - queryStart) / (1000 * 60 * 60 * 24) < 5) {
-                         queryStart.setUTCFullYear(queryStart.getUTCFullYear() - 1);
-                    }
-                } else if (isPast) {
-                    // For very old dates, maybe we want actual history, but Open-Meteo Archive handles it.
-                    // This logic mainly handles future "prediction" via past data.
+                    while (queryStart > today) { queryStart.setUTCFullYear(queryStart.getUTCFullYear() - 1); }
+                    if ((today - queryStart) / (1000 * 60 * 60 * 24) < 5) { queryStart.setUTCFullYear(queryStart.getUTCFullYear() - 1); }
                 }
                 
-                // End date calculation
                 const queryEnd = new Date(queryStart);
                 queryEnd.setUTCDate(queryStart.getUTCDate() + (daysCount > 1 ? daysCount : 7) + 2);
                 
@@ -527,12 +497,9 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                 
                 if (data.daily && data.daily.time) {
                     data.daily.time.forEach((time, index) => {
-                         // Map back to trip dates using UTC math
-                         // The index from the API result corresponds to startObj + index days
                          const targetDateForIndex = new Date(startObj);
                          targetDateForIndex.setUTCDate(targetDateForIndex.getUTCDate() + index);
                          const key = targetDateForIndex.toISOString().split('T')[0];
-                        
                         weatherMap[key] = {
                             max: data.daily.temperature_2m_max[index],
                             min: data.daily.temperature_2m_min[index],
@@ -540,7 +507,6 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                         };
                     });
                 }
-                
                 setWeatherData(weatherMap);
                 setIsHistorical(shouldUseHistorical);
 
@@ -569,17 +535,9 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
         tempText = `${Math.round(realWeather.min)}°/${Math.round(realWeather.max)}°`;
         textClass = "text-slate-600 dark:text-slate-400"; 
     } else {
-        if (isError) {
-             Icon = WifiOff;
-             tempText = "Offline";
-             textClass = "text-red-400";
-        } else if (Object.keys(weatherData).length === 0) {
-            Icon = Loader2;
-            tempText = "Fetching";
-        } else {
-             Icon = CalendarIcon;
-             tempText = "--";
-        }
+        if (isError) { Icon = WifiOff; tempText = "Offline"; textClass = "text-red-400"; } 
+        else if (Object.keys(weatherData).length === 0) { Icon = Loader2; tempText = "Fetching"; } 
+        else { Icon = CalendarIcon; tempText = "--"; }
     }
 
     return (
@@ -614,38 +572,34 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, t
     const catObj = CATEGORY_ICONS.find(c => c.id === expense.category) || CATEGORY_ICONS[8];
     const Icon = catObj.icon;
 
-    // --- NEW: Dynamic Conversion Calculation ---
     const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
     const inputRate = EXCHANGE_RATES[inputCurrencyCode] || 1;
     const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
-    
-    // Logic: Convert Input -> Base -> Target
     const amountInBase = amountInput / inputRate * baseRate; 
     const amountInTarget = amountInBase * (targetRate / baseRate);
     
-    // Should we show conversion? Only if currencies differ.
     const showConversion = inputCurrencyCode !== targetCurrency;
     const targetCurrencyObj = currencyOptions.find(c => c.code === targetCurrency) || { symbol: targetCurrency };
 
     return (
         <div className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center transition-all hover:shadow-md`}>
-            <div className="flex items-center space-x-3">
-                <div className={`p-2 rounded-full ${isEditMode ? 'bg-red-50 text-red-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
+            <div className="flex items-center space-x-3 min-w-0">
+                <div className={`p-2 rounded-full flex-shrink-0 ${isEditMode ? 'bg-red-50 text-red-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
                     <Icon size={18} />
                 </div>
-                <div>
-                    <p className="font-bold text-slate-900 dark:text-white text-sm md:text-base">{expense.name}</p>
+                <div className="min-w-0">
+                    <p className="font-bold text-slate-900 dark:text-white text-sm md:text-base truncate pr-2">{expense.name}</p>
                     <p className="text-xs text-slate-500 capitalize">{catObj.label}</p>
                 </div>
             </div>
-            <div className="text-right flex items-center space-x-3">
+            <div className="text-right flex items-center space-x-3 flex-shrink-0">
                 <div className="flex flex-col items-end">
                     <p className="font-black text-lg text-slate-900 dark:text-white leading-tight">
                         {inputCurrencyObj.symbol}{Number(amountInput).toFixed(2)}
                         <span className="text-[10px] font-bold text-slate-500 ml-1">{inputCurrencyObj.code}</span>
                     </p>
                     {showConversion && (
-                         <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                         <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 whitespace-nowrap">
                             ≈ {targetCurrencyObj.symbol}{Number(amountInTarget).toFixed(2)} {targetCurrency}
                          </p>
                     )}
@@ -684,19 +638,15 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
         }
     }, [initialData]);
 
-    // --- NEW: Live Conversion Logic ---
     const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
     const inputRate = EXCHANGE_RATES[inputCurrencyCode] || 1;
-    // Calculate display amount: Amount / InputRate * TargetRate
     const convertedValue = amountInput ? (Number(amountInput) / inputRate * targetRate) : 0;
     const targetSymbol = currencyOptions.find(c => c.code === targetCurrency)?.symbol || targetCurrency;
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!name || !amountInput) return;
-        
         const amountBase = convertToBase(Number(amountInput), inputCurrencyCode);
-        
         onAddExpense({ 
             id: initialData ? initialData.id : Math.random().toString(36).substr(2, 9), 
             name, 
@@ -707,18 +657,12 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             type: 'expense', 
             date 
         });
-        
-        if (!initialData) { 
-            setName(''); 
-            setAmountInput(''); 
-        }
+        if (!initialData) { setName(''); setAmountInput(''); }
     };
     
     const inputCurrencySymbol = currencyOptions.find(c => c.code === inputCurrencyCode)?.symbol || '';
     const selectOptions = currencyOptions.map(c => ({ 
-        value: c.code, 
-        label: c.code, 
-        icon: getFlagUrl(c.countryCode) 
+        value: c.code, label: c.code, icon: getFlagUrl(c.countryCode) 
     }));
 
     return (
@@ -737,7 +681,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                 />
             </div>
             
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                  <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500 uppercase">Currency</label>
                     <CustomIconSelect 
@@ -747,7 +691,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                         placeholder="Select" 
                     />
                 </div>
-                <div className="space-y-1 col-span-2">
+                <div className="space-y-1 sm:col-span-2">
                     <label className="text-xs font-bold text-slate-500 uppercase">Amount</label>
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">{inputCurrencySymbol}</span>
@@ -760,9 +704,9 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                             placeholder="0.00" 
                             required
                         />
-                        {/* --- NEW: Real-time Conversion Badge --- */}
+                        {/* --- REAL-TIME CONVERSION BADGE --- */}
                         {amountInput && inputCurrencyCode !== targetCurrency && (
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-lg pointer-events-none">
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-lg pointer-events-none whitespace-nowrap">
                                 ≈ {targetSymbol}{convertedValue.toFixed(2)}
                             </div>
                         )}
@@ -1669,6 +1613,7 @@ export default function TravelApp() {
                                         <span className="text-[10px] font-bold text-slate-500 truncate w-full">{user.email}</span>
                                      </div>
                                      <button onClick={() => { setModalOpen('share'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Share2 size={16} /> Share Trip</button>
+                                     <button onClick={() => { setModalOpen('rates'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Banknote size={16} /> Exchange Rates</button>
                                      <button onClick={() => { setModalOpen('settings'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Settings size={16} /> Trip Settings</button>
                                      <button onClick={() => { setShowSignOutConfirm(true); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-red-500 text-sm font-medium"><LogOut size={16} /> Sign Out</button>
                                 </div>
@@ -2033,6 +1978,42 @@ export default function TravelApp() {
                 </div>
             </Modal>
             
+            {/* --- NEW: Exchange Rates Modal --- */}
+            <Modal isOpen={modalOpen === 'rates'} onClose={() => setModalOpen(null)} title="Exchange Rates">
+                <div className="space-y-4">
+                    <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl text-center">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            Reference rates used for automatic budget conversions.
+                            <br/>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">Base Currency: 1.00 USD ($)</span>
+                        </p>
+                    </div>
+                    
+                    <div className="grid gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                        {CURRENCY_OPTIONS.map((c) => (
+                            <div key={c.code} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl hover:border-indigo-200 dark:hover:border-indigo-900 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <img src={getFlagUrl(c.countryCode)} alt={c.code} className="w-8 h-6 object-cover rounded shadow-sm" />
+                                    <div>
+                                        <div className="flex items-center gap-1">
+                                            <span className="font-bold text-slate-900 dark:text-white">{c.code}</span>
+                                            <span className="text-xs text-slate-400 font-mono">({c.symbol})</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{c.name}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">
+                                        {EXCHANGE_RATES[c.code]?.toFixed(2) || '-'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 font-medium">per 1 USD</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </Modal>
+
              <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
                 <div className="space-y-6">
                     <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-transparent dark:border-slate-700">
