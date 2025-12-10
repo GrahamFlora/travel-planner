@@ -945,38 +945,41 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
             key={item.id}
             onClick={() => handleToggleItem(item.id)}
             className={`
-                group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 border-2
+                group flex items-center gap-5 p-5 rounded-3xl cursor-pointer transition-all duration-300 border-2 min-h-[5rem]
                 ${item.completed 
-                    ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-60 hover:opacity-100' 
-                    : 'bg-white dark:bg-slate-800 border-white dark:border-slate-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md hover:-translate-y-0.5'
+                    ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-60' 
+                    : 'bg-white dark:bg-slate-800 border-white dark:border-slate-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md'
                 }
             `}
         >
+            {/* Larger Checkbox Target */}
             <div className={`
-                flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300
+                flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all duration-300
                 ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'}
             `}>
-                {item.completed && <Check size={16} className="text-white animate-in zoom-in duration-200" strokeWidth={4} />}
+                {item.completed && <Check size={20} className="text-white animate-in zoom-in duration-200" strokeWidth={4} />}
             </div>
             
             <div className="flex-grow min-w-0">
-                <span className={`block font-medium text-lg transition-all duration-300 truncate ${item.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                <span className={`block font-medium text-lg md:text-xl transition-all duration-300 break-words ${item.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>
                     {item.text}
                 </span>
                 {/* Show Day Tag only if sorting is NOT grouped (context needed) */}
                 {sortBy !== 'grouped' && item.dayId && item.dayId !== 'general' && (
-                     <div className={`flex items-center gap-1 text-xs font-bold mt-1 ${item.completed ? 'text-slate-300' : 'text-indigo-500'}`}>
+                     <div className={`flex items-center gap-1 text-xs font-bold mt-1.5 ${item.completed ? 'text-slate-300' : 'text-indigo-500'}`}>
                         <CalendarDays size={12} />
                         {trip.days.find(d => d.id === item.dayId)?.title || 'Scheduled'}
                     </div>
                 )}
             </div>
             
+            {/* Always visible delete button on mobile (opacity hack) */}
             <button 
                 onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
+                className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:bg-red-100"
+                title="Delete item"
             >
-                <Trash2 size={18} />
+                <Trash2 size={20} />
             </button>
         </div>
     );
@@ -1028,41 +1031,42 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                         </div>
                     </div>
                     
-                    {/* Input Area */}
-                    <form onSubmit={handleAddItem} className="mt-6 flex gap-2">
-                         <div className="relative flex-grow flex gap-2">
-                             {/* Day Selector (Minimalist) */}
-                             <div className="relative">
-                                 <select 
-                                    value={targetDayId}
-                                    onChange={(e) => setTargetDayId(e.target.value)}
-                                    className="h-12 w-12 sm:w-auto sm:px-3 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 outline-none focus:border-indigo-500 font-bold text-xs appearance-none cursor-pointer text-slate-600 dark:text-slate-300 text-center sm:text-left shadow-sm"
-                                    style={{ paddingLeft: '12px' }} // Visual centering fix
-                                 >
-                                     <option value="general">★</option>
-                                     {trip.days.map((day, idx) => (
-                                         <option key={day.id} value={day.id}>D{idx+1}</option>
-                                     ))}
-                                 </select>
-                                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center sm:hidden">
-                                    {targetDayId === 'general' ? <Star size={14} className="text-slate-400" /> : <span className="text-xs font-bold">{trip.days.findIndex(d => d.id === targetDayId) + 1}</span>}
-                                 </div>
+                    {/* Input Area - Wraps on mobile for easier typing */}
+                    <form onSubmit={handleAddItem} className="mt-6 flex flex-col sm:flex-row gap-3">
+                         <div className="relative min-w-[120px]">
+                             <select 
+                                value={targetDayId}
+                                onChange={(e) => setTargetDayId(e.target.value)}
+                                className="w-full h-12 sm:h-14 pl-10 pr-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 outline-none focus:border-indigo-500 font-bold text-sm appearance-none cursor-pointer text-slate-700 dark:text-slate-300 shadow-sm"
+                             >
+                                 <option value="general">General</option>
+                                 {trip.days.map((day, idx) => (
+                                     <option key={day.id} value={day.id}>{day.title}</option>
+                                 ))}
+                             </select>
+                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                {targetDayId === 'general' ? <Star size={18} /> : <CalendarDays size={18} />}
                              </div>
-                             
+                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                <ChevronDown size={14} />
+                             </div>
+                         </div>
+                         
+                         <div className="flex-grow flex gap-2">
                              <input 
                                 value={newItemText}
                                 onChange={(e) => setNewItemText(e.target.value)}
-                                placeholder={targetDayId === 'general' ? "Add general note..." : `Add note for ${trip.days.find(d => d.id === targetDayId)?.title}...`}
-                                className="w-full h-12 px-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-medium transition-all dark:text-white shadow-sm"
+                                placeholder="Add item..."
+                                className="w-full h-12 sm:h-14 px-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-medium text-base transition-all dark:text-white shadow-sm"
                              />
+                             <button 
+                                type="submit" 
+                                disabled={!newItemText.trim()}
+                                className="h-12 sm:h-14 w-14 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl flex-shrink-0 flex items-center justify-center transition-all shadow-md active:scale-95"
+                             >
+                                 <Plus size={28} strokeWidth={3} />
+                             </button>
                          </div>
-                         <button 
-                            type="submit" 
-                            disabled={!newItemText.trim()}
-                            className="h-12 w-12 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl flex-shrink-0 flex items-center justify-center transition-all shadow-md active:scale-95"
-                         >
-                             <Plus size={24} strokeWidth={3} />
-                         </button>
                     </form>
                 </div>
 
