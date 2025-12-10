@@ -67,7 +67,8 @@ import {
   CheckSquare,   
   Square,        
   Sparkles,
-  ArrowUpDown 
+  ArrowUpDown,
+  CalendarDays
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -870,21 +871,46 @@ const CalendarView = ({ trip, onSelectDay }) => {
     );
 };
 
-// --- NEW: CHECKLIST VIEW COMPONENT ---
+// --- NEW: CHECKLIST VIEW COMPONENT (UPDATED WITH SORTING & GROUPING) ---
 const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
     const [newItemText, setNewItemText] = useState('');
-    const [newItemDate, setNewItemDate] = useState(''); // State for the date input
+    const [targetDayId, setTargetDayId] = useState('general'); // 'general' or specific day ID
+    const [sortBy, setSortBy] = useState('grouped'); // 'grouped', 'status', 'alpha'
+    const [isSortOpen, setIsSortOpen] = useState(false);
     
     const checklist = trip.checklist || [];
     
-    // Derived state for sorting: Unchecked first, then checked
+    // Sort & Group Logic
     const sortedList = useMemo(() => {
-        return [...checklist].sort((a, b) => {
-            if (a.completed === b.completed) return 0;
-            return a.completed ? 1 : -1;
-        });
-    }, [checklist]);
+        let list = [...checklist];
+        
+        if (sortBy === 'status') {
+            return list.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
+        } 
+        if (sortBy === 'alpha') {
+            return list.sort((a, b) => a.text.localeCompare(b.text));
+        }
+        
+        // Default: 'grouped' (Done via render logic, but here we just sort by creation for fallback)
+        return list.sort((a, b) => b.createdAt - a.createdAt);
+    }, [checklist, sortBy]);
     
+    // Group Items for "Grouped" View
+    const groupedItems = useMemo(() => {
+        if (sortBy !== 'grouped') return null;
+        
+        const groups = { 'general': [] };
+        trip.days.forEach(d => groups[d.id] = []);
+        
+        checklist.forEach(item => {
+            const dId = item.dayId || 'general';
+            if (!groups[dId]) groups['general'].push(item);
+            else groups[dId].push(item);
+        });
+        
+        return groups;
+    }, [checklist, trip.days, sortBy]);
+
     const completedCount = checklist.filter(i => i.completed).length;
     const progress = checklist.length > 0 ? (completedCount / checklist.length) * 100 : 0;
     
@@ -896,11 +922,10 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
             text: newItemText.trim(),
             completed: false,
             createdAt: Date.now(),
-            date: newItemDate || null // Store the date if provided
+            dayId: targetDayId // Assign to specific day
         };
         updateTrip({ checklist: [...checklist, newItem] });
         setNewItemText('');
-        setNewItemDate(''); // Reset date input
     };
     
     const handleToggleItem = (itemId) => {
@@ -915,12 +940,53 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
         updateTrip({ checklist: updatedList });
     };
     
+    const renderItem = (item) => (
+        <div 
+            key={item.id}
+            onClick={() => handleToggleItem(item.id)}
+            className={`
+                group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 border-2
+                ${item.completed 
+                    ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-60 hover:opacity-100' 
+                    : 'bg-white dark:bg-slate-800 border-white dark:border-slate-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md hover:-translate-y-0.5'
+                }
+            `}
+        >
+            <div className={`
+                flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300
+                ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'}
+            `}>
+                {item.completed && <Check size={16} className="text-white animate-in zoom-in duration-200" strokeWidth={4} />}
+            </div>
+            
+            <div className="flex-grow min-w-0">
+                <span className={`block font-medium text-lg transition-all duration-300 truncate ${item.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                    {item.text}
+                </span>
+                {/* Show Day Tag only if sorting is NOT grouped (context needed) */}
+                {sortBy !== 'grouped' && item.dayId && item.dayId !== 'general' && (
+                     <div className={`flex items-center gap-1 text-xs font-bold mt-1 ${item.completed ? 'text-slate-300' : 'text-indigo-500'}`}>
+                        <CalendarDays size={12} />
+                        {trip.days.find(d => d.id === item.dayId)?.title || 'Scheduled'}
+                    </div>
+                )}
+            </div>
+            
+            <button 
+                onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
+                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
+            >
+                <Trash2 size={18} />
+            </button>
+        </div>
+    );
+
     return (
         <main className="max-w-3xl mx-auto mt-6 px-4 pb-24 animate-in fade-in">
              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                 
                 {/* Header & Progress */}
-                <div className="p-6 md:p-8 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 relative overflow-hidden">
+                <div className="p-6 md:p-8 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 relative">
                     <div className="relative z-10 flex justify-between items-start mb-4">
                         <div>
                             <h2 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
@@ -929,9 +995,26 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                             </h2>
                             <p className="text-slate-500 dark:text-slate-400 mt-1">Keep track of essentials and to-dos.</p>
                         </div>
-                         <div className="text-right">
-                             <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">{Math.round(progress)}%</div>
-                             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Complete</div>
+                         <div className="flex flex-col items-end gap-2">
+                             {/* SORT BUTTON */}
+                             <div className="relative">
+                                 <button 
+                                    onClick={() => setIsSortOpen(!isSortOpen)}
+                                    className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm"
+                                 >
+                                     <ArrowUpDown size={18} />
+                                 </button>
+                                 {isSortOpen && (
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                                         <button onClick={() => { setSortBy('grouped'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'grouped' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>By Day (Grouped)</button>
+                                         <button onClick={() => { setSortBy('status'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'status' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Status (Incomplete)</button>
+                                         <button onClick={() => { setSortBy('alpha'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'alpha' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Alphabetical (A-Z)</button>
+                                    </div>
+                                 )}
+                             </div>
+                             <div className="text-right">
+                                 <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{Math.round(progress)}%</div>
+                             </div>
                          </div>
                     </div>
                     
@@ -947,22 +1030,31 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                     
                     {/* Input Area */}
                     <form onSubmit={handleAddItem} className="mt-6 flex gap-2">
-                         <div className="relative flex-grow">
+                         <div className="relative flex-grow flex gap-2">
+                             {/* Day Selector (Minimalist) */}
+                             <div className="relative">
+                                 <select 
+                                    value={targetDayId}
+                                    onChange={(e) => setTargetDayId(e.target.value)}
+                                    className="h-12 w-12 sm:w-auto sm:px-3 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 outline-none focus:border-indigo-500 font-bold text-xs appearance-none cursor-pointer text-slate-600 dark:text-slate-300 text-center sm:text-left shadow-sm"
+                                    style={{ paddingLeft: '12px' }} // Visual centering fix
+                                 >
+                                     <option value="general">★</option>
+                                     {trip.days.map((day, idx) => (
+                                         <option key={day.id} value={day.id}>D{idx+1}</option>
+                                     ))}
+                                 </select>
+                                 <div className="absolute inset-0 pointer-events-none flex items-center justify-center sm:hidden">
+                                    {targetDayId === 'general' ? <Star size={14} className="text-slate-400" /> : <span className="text-xs font-bold">{trip.days.findIndex(d => d.id === targetDayId) + 1}</span>}
+                                 </div>
+                             </div>
+                             
                              <input 
                                 value={newItemText}
                                 onChange={(e) => setNewItemText(e.target.value)}
-                                placeholder="Add item..."
-                                className="w-full h-12 pl-4 pr-32 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-medium transition-all dark:text-white shadow-sm"
+                                placeholder={targetDayId === 'general' ? "Add general note..." : `Add note for ${trip.days.find(d => d.id === targetDayId)?.title}...`}
+                                className="w-full h-12 px-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-medium transition-all dark:text-white shadow-sm"
                              />
-                             {/* Date Picker integrated into the right side of the input */}
-                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
-                                 <input 
-                                    type="date"
-                                    value={newItemDate}
-                                    onChange={(e) => setNewItemDate(e.target.value)}
-                                    className="h-8 bg-slate-100 dark:bg-slate-700 rounded-lg px-2 text-xs font-bold text-slate-600 dark:text-slate-300 border-none outline-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
-                                 />
-                             </div>
                          </div>
                          <button 
                             type="submit" 
@@ -985,47 +1077,37 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                              <p className="text-xs">Add items to keep organized.</p>
                          </div>
                      ) : (
-                         <div className="space-y-3">
-                             {sortedList.map(item => (
-                                 <div 
-                                    key={item.id}
-                                    onClick={() => handleToggleItem(item.id)}
-                                    className={`
-                                        group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 border-2
-                                        ${item.completed 
-                                            ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-60 hover:opacity-100' 
-                                            : 'bg-white dark:bg-slate-800 border-white dark:border-slate-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md hover:-translate-y-0.5'
-                                        }
-                                    `}
-                                 >
-                                    <div className={`
-                                        flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300
-                                        ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'}
-                                    `}>
-                                        {item.completed && <Check size={16} className="text-white animate-in zoom-in duration-200" strokeWidth={4} />}
-                                    </div>
-                                    
-                                    <div className="flex-grow min-w-0">
-                                        <span className={`block font-medium text-lg transition-all duration-300 truncate ${item.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                                            {item.text}
-                                        </span>
-                                        {/* Display the date if it exists */}
-                                        {item.date && (
-                                            <div className={`flex items-center gap-1 text-xs font-bold mt-1 ${item.completed ? 'text-slate-300' : 'text-indigo-500'}`}>
-                                                <CalendarIcon size={12} />
-                                                {new Date(item.date).toLocaleDateString()}
+                         <div className="space-y-4">
+                             {/* GROUPED VIEW */}
+                             {sortBy === 'grouped' && groupedItems ? (
+                                 <>
+                                    {/* General Section */}
+                                    {groupedItems['general'].length > 0 && (
+                                        <div className="space-y-2">
+                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 flex items-center gap-1"><Star size={12}/> General Notes</h4>
+                                            {groupedItems['general'].map(renderItem)}
+                                        </div>
+                                    )}
+                                    {/* Day Sections */}
+                                    {trip.days.map((day, idx) => {
+                                        const items = groupedItems[day.id];
+                                        if (!items || items.length === 0) return null;
+                                        return (
+                                            <div key={day.id} className="space-y-2 pt-2">
+                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 flex items-center gap-1">
+                                                    <CalendarDays size={12}/> {day.title} <span className="opacity-50">• {day.date}</span>
+                                                </h4>
+                                                {items.map(renderItem)}
                                             </div>
-                                        )}
-                                    </div>
-                                    
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-                                 </div>
-                             ))}
+                                        );
+                                    })}
+                                    {/* Show empty state if nothing matches */}
+                                    {Object.values(groupedItems).every(arr => arr.length === 0) && <p className="text-center text-slate-400 text-sm py-4">No items found.</p>}
+                                 </>
+                             ) : (
+                                 /* FLAT SORTED VIEW */
+                                 sortedList.map(renderItem)
+                             )}
                          </div>
                      )}
                 </div>
