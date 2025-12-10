@@ -62,7 +62,12 @@ import {
   History,
   Link as LinkIcon,
   Eye,
-  Banknote
+  Banknote,
+  ClipboardList, 
+  CheckSquare,   
+  Square,        
+  Sparkles,
+  ArrowUpDown 
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -235,7 +240,6 @@ const compressImage = async (file) => {
     });
 };
 
-// --- ROBUST CLIPBOARD HELPER ---
 const copyToClipboard = (text, onSuccess) => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text)
@@ -589,7 +593,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, t
                 </div>
                 <div className="min-w-0">
                     <p className="font-bold text-slate-900 dark:text-white text-sm md:text-base truncate pr-2">{expense.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{catObj.label}</p>
+                    <p className="text-xs text-slate-500 capitalize">{catObj.label} {expense.date && `• ${new Date(expense.date).toLocaleDateString()}`}</p>
                 </div>
             </div>
             <div className="text-right flex items-center space-x-3 flex-shrink-0">
@@ -600,7 +604,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, t
                     </p>
                     {showConversion && (
                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 whitespace-nowrap">
-                            ≈ {targetCurrencyObj.symbol}{Number(amountInTarget).toFixed(2)} {targetCurrency}
+                            ≈ {targetSymbol}{Number(amountInTarget).toFixed(2)} {targetCurrency}
                          </p>
                     )}
                 </div>
@@ -866,11 +870,177 @@ const CalendarView = ({ trip, onSelectDay }) => {
     );
 };
 
+// --- NEW: CHECKLIST VIEW COMPONENT ---
+const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
+    const [newItemText, setNewItemText] = useState('');
+    const [newItemDate, setNewItemDate] = useState(''); // State for the date input
+    
+    const checklist = trip.checklist || [];
+    
+    // Derived state for sorting: Unchecked first, then checked
+    const sortedList = useMemo(() => {
+        return [...checklist].sort((a, b) => {
+            if (a.completed === b.completed) return 0;
+            return a.completed ? 1 : -1;
+        });
+    }, [checklist]);
+    
+    const completedCount = checklist.filter(i => i.completed).length;
+    const progress = checklist.length > 0 ? (completedCount / checklist.length) * 100 : 0;
+    
+    const handleAddItem = (e) => {
+        e.preventDefault();
+        if(!newItemText.trim()) return;
+        const newItem = {
+            id: Math.random().toString(36).substr(2, 9),
+            text: newItemText.trim(),
+            completed: false,
+            createdAt: Date.now(),
+            date: newItemDate || null // Store the date if provided
+        };
+        updateTrip({ checklist: [...checklist, newItem] });
+        setNewItemText('');
+        setNewItemDate(''); // Reset date input
+    };
+    
+    const handleToggleItem = (itemId) => {
+        const updatedList = checklist.map(item => 
+            item.id === itemId ? { ...item, completed: !item.completed } : item
+        );
+        updateTrip({ checklist: updatedList });
+    };
+    
+    const handleDeleteItem = (itemId) => {
+        const updatedList = checklist.filter(item => item.id !== itemId);
+        updateTrip({ checklist: updatedList });
+    };
+    
+    return (
+        <main className="max-w-3xl mx-auto mt-6 px-4 pb-24 animate-in fade-in">
+             <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+                
+                {/* Header & Progress */}
+                <div className="p-6 md:p-8 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 relative overflow-hidden">
+                    <div className="relative z-10 flex justify-between items-start mb-4">
+                        <div>
+                            <h2 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+                                <ClipboardList className="text-indigo-500" size={32} />
+                                Notes & Packing
+                            </h2>
+                            <p className="text-slate-500 dark:text-slate-400 mt-1">Keep track of essentials and to-dos.</p>
+                        </div>
+                         <div className="text-right">
+                             <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">{Math.round(progress)}%</div>
+                             <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Complete</div>
+                         </div>
+                    </div>
+                    
+                    {/* Animated Progress Bar */}
+                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner relative">
+                        <div 
+                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700 ease-out flex items-center justify-end pr-2"
+                            style={{ width: `${progress}%` }}
+                        >
+                            {progress >= 100 && <Sparkles size={12} className="text-white animate-pulse" />}
+                        </div>
+                    </div>
+                    
+                    {/* Input Area */}
+                    <form onSubmit={handleAddItem} className="mt-6 flex gap-2">
+                         <div className="relative flex-grow">
+                             <input 
+                                value={newItemText}
+                                onChange={(e) => setNewItemText(e.target.value)}
+                                placeholder="Add item..."
+                                className="w-full h-12 pl-4 pr-32 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-medium transition-all dark:text-white shadow-sm"
+                             />
+                             {/* Date Picker integrated into the right side of the input */}
+                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                                 <input 
+                                    type="date"
+                                    value={newItemDate}
+                                    onChange={(e) => setNewItemDate(e.target.value)}
+                                    className="h-8 bg-slate-100 dark:bg-slate-700 rounded-lg px-2 text-xs font-bold text-slate-600 dark:text-slate-300 border-none outline-none cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                                 />
+                             </div>
+                         </div>
+                         <button 
+                            type="submit" 
+                            disabled={!newItemText.trim()}
+                            className="h-12 w-12 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl flex-shrink-0 flex items-center justify-center transition-all shadow-md active:scale-95"
+                         >
+                             <Plus size={24} strokeWidth={3} />
+                         </button>
+                    </form>
+                </div>
+
+                {/* List Items */}
+                <div className="p-4 bg-slate-50 dark:bg-black/20 min-h-[300px]">
+                     {checklist.length === 0 ? (
+                         <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                             <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                                 <CheckSquare size={32} className="opacity-30" />
+                             </div>
+                             <p className="font-medium">Your list is empty.</p>
+                             <p className="text-xs">Add items to keep organized.</p>
+                         </div>
+                     ) : (
+                         <div className="space-y-3">
+                             {sortedList.map(item => (
+                                 <div 
+                                    key={item.id}
+                                    onClick={() => handleToggleItem(item.id)}
+                                    className={`
+                                        group flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-300 border-2
+                                        ${item.completed 
+                                            ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-60 hover:opacity-100' 
+                                            : 'bg-white dark:bg-slate-800 border-white dark:border-slate-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md hover:-translate-y-0.5'
+                                        }
+                                    `}
+                                 >
+                                    <div className={`
+                                        flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300
+                                        ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'}
+                                    `}>
+                                        {item.completed && <Check size={16} className="text-white animate-in zoom-in duration-200" strokeWidth={4} />}
+                                    </div>
+                                    
+                                    <div className="flex-grow min-w-0">
+                                        <span className={`block font-medium text-lg transition-all duration-300 truncate ${item.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                                            {item.text}
+                                        </span>
+                                        {/* Display the date if it exists */}
+                                        {item.date && (
+                                            <div className={`flex items-center gap-1 text-xs font-bold mt-1 ${item.completed ? 'text-slate-300' : 'text-indigo-500'}`}>
+                                                <CalendarIcon size={12} />
+                                                {new Date(item.date).toLocaleDateString()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
+                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                 </div>
+                             ))}
+                         </div>
+                     )}
+                </div>
+             </div>
+        </main>
+    );
+};
+
 const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const [expenses, setExpenses] = useState([]);
     const [targetCurrency, setTargetCurrency] = useState(trip?.currency || 'USD'); 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState(null); 
+    const [sortBy, setSortBy] = useState('date'); // 'date', 'amount_high', 'amount_low', 'name'
+    const [isSortOpen, setIsSortOpen] = useState(false); // Added for toggle control
 
     useEffect(() => {
         if(!currentUser) return;
@@ -927,7 +1097,23 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
     const totalDisplay = totalBase * (targetRate / baseRate);
 
+    // SORTING LOGIC
+    const sortedExpenses = useMemo(() => {
+        let sorted = [...tripExpenses];
+        if (sortBy === 'amount_high') {
+            sorted.sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0));
+        } else if (sortBy === 'amount_low') {
+            sorted.sort((a, b) => (Number(a.amount) || 0) - (Number(b.amount) || 0));
+        } else if (sortBy === 'name') {
+            sorted.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        // 'date' grouping logic handles itself below
+        return sorted;
+    }, [tripExpenses, sortBy]);
+
+    // Grouping for Date view
     const expensesByDate = useMemo(() => {
+        if (sortBy !== 'date') return {}; // Not needed for other views
         const grouped = {};
         tripExpenses.forEach(e => { 
             const d = e.date || 'Unscheduled'; 
@@ -935,13 +1121,14 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
             grouped[d].push(e); 
         });
         return grouped;
-    }, [tripExpenses]);
+    }, [tripExpenses, sortBy]);
 
     const sortedDates = Object.keys(expensesByDate).sort();
 
     return (
         <main className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
+            {/* REMOVED overflow-hidden here */}
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative">
                 <div className="relative z-10">
                     <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
                     <h1 className="text-4xl font-black mb-6">{formatCurrency(totalDisplay, targetCurrency)}</h1>
@@ -955,39 +1142,75 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                                 {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code} className="text-black">{c.code}</option>)}
                              </select>
                          </div>
+                         {/* SORT BUTTON with toggle logic */}
+                         <div className="relative">
+                             <button 
+                                onClick={() => setIsSortOpen(!isSortOpen)}
+                                className="bg-white/10 p-2.5 rounded-xl border border-white/20 hover:bg-white/20 transition-colors"
+                             >
+                                 <ArrowUpDown size={18} className="text-white" />
+                             </button>
+                             {isSortOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                                     <button onClick={() => { setSortBy('date'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'date' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Date (Grouped)</button>
+                                     <button onClick={() => { setSortBy('amount_high'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'amount_high' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Price: High to Low</button>
+                                     <button onClick={() => { setSortBy('amount_low'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'amount_low' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Price: Low to High</button>
+                                     <button onClick={() => { setSortBy('name'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'name' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Name (A-Z)</button>
+                                </div>
+                             )}
+                         </div>
                     </div>
                 </div>
             </div>
+            
             <div className="space-y-6">
                 {tripExpenses.length === 0 ? ( 
                     <div className="text-center py-10 text-slate-400"><Wallet size={48} className="mx-auto mb-2 opacity-20" /><p>No expenses for this trip yet.</p></div> 
                 ) : ( 
-                    sortedDates.map(date => {
-                        const dailyExpenses = expensesByDate[date];
-                        const dailyTotalBase = dailyExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
-                        const dailyTotalDisplay = dailyTotalBase * (targetRate / baseRate);
-                        return (
-                            <div key={date} className="animate-in slide-in-from-bottom-2">
-                                <div className="flex justify-between items-end mb-3 px-2">
-                                    <h4 className="font-bold text-slate-500 text-sm uppercase tracking-wider">{date === 'Unscheduled' ? 'Other' : new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</h4>
-                                    <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(dailyTotalDisplay, targetCurrency)}</span>
+                    sortBy === 'date' ? (
+                        /* DATE GROUPED VIEW */
+                        sortedDates.map(date => {
+                            const dailyExpenses = expensesByDate[date];
+                            const dailyTotalBase = dailyExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
+                            const dailyTotalDisplay = dailyTotalBase * (targetRate / baseRate);
+                            return (
+                                <div key={date} className="animate-in slide-in-from-bottom-2">
+                                    <div className="flex justify-between items-end mb-3 px-2">
+                                        <h4 className="font-bold text-slate-500 text-sm uppercase tracking-wider">{date === 'Unscheduled' ? 'Other' : new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</h4>
+                                        <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(dailyTotalDisplay, targetCurrency)}</span>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {dailyExpenses.map(e => (
+                                            <ExpenseCard 
+                                                key={e.id} 
+                                                expense={e} 
+                                                onDelete={handleDelete} 
+                                                onEdit={handleEditStart} 
+                                                isEditMode={isEditMode} 
+                                                currencyOptions={CURRENCY_OPTIONS}
+                                                targetCurrency={targetCurrency}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    {dailyExpenses.map(e => (
-                                        <ExpenseCard 
-                                            key={e.id} 
-                                            expense={e} 
-                                            onDelete={handleDelete} 
-                                            onEdit={handleEditStart} 
-                                            isEditMode={isEditMode} 
-                                            currencyOptions={CURRENCY_OPTIONS}
-                                            targetCurrency={targetCurrency} // PASS DOWN TARGET CURRENCY
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })
+                            );
+                        })
+                    ) : (
+                        /* FLAT LIST VIEW (Sorted) */
+                        <div className="space-y-3 animate-in slide-in-from-bottom-2">
+                            {sortedExpenses.map(e => (
+                                <ExpenseCard 
+                                    key={e.id} 
+                                    expense={e} 
+                                    onDelete={handleDelete} 
+                                    onEdit={handleEditStart} 
+                                    isEditMode={isEditMode} 
+                                    currencyOptions={CURRENCY_OPTIONS}
+                                    targetCurrency={targetCurrency}
+                                />
+                            ))}
+                        </div>
+                    )
                 )}
             </div>
             <Modal isOpen={isAddModalOpen} onClose={handleCloseModal} title={editingExpense ? "Edit Expense" : "New Expense"}>
@@ -996,7 +1219,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                     currencyOptions={CURRENCY_OPTIONS} 
                     convertToBase={convertToBase} 
                     initialData={editingExpense} 
-                    targetCurrency={targetCurrency} // Pass target currency
+                    targetCurrency={targetCurrency} 
                 />
             </Modal>
         </main>
@@ -1105,12 +1328,8 @@ export default function TravelApp() {
             const shareId = urlParams.get('shareId');
             
             if (shareId && !user) {
-                // User is NOT logged in but has a code. Auto-login anonymously.
                 try {
                     await signInAnonymously(auth);
-                    // We let the authStateChanged listener handle the next steps (fetching trips)
-                    // But we need to switch view to 'import' or 'trip' once loaded.
-                    // For now, let's store it to auto-trigger import modal
                     window.localStorage.setItem('pendingShareId', shareId);
                 } catch (e) {
                     console.error("Auto-login failed", e);
@@ -1127,17 +1346,11 @@ export default function TravelApp() {
         if (user && isDataLoaded) {
             const pending = window.localStorage.getItem('pendingShareId');
             if (pending) {
-                // Auto-trigger the import process (or show modal pre-filled)
                 setModalOpen('import');
-                // We will leave the input logic to the modal, but pre-filling it would be nice.
-                // For simplicity in this structure, we just open the modal so they see where to go.
-                // Ideally, we'd auto-fetch, but 'import' requires user confirmation usually.
             }
         }
     }, [user, isDataLoaded]);
 
-
-    // --- DYNAMIC TITLE & SEO HOOK ---
     const trip = trips.find(t => t.id === currentTripId);
     
     useEffect(() => {
@@ -1268,12 +1481,10 @@ export default function TravelApp() {
     const handleAddCompanion = async (e) => {
         e.preventDefault();
         if (!newCompanionName.trim()) return;
-        
         let photoUrl = null;
         if (newCompanionPhoto) { 
             photoUrl = await compressImage(newCompanionPhoto); 
         }
-        
         const newCompanion = { name: newCompanionName, photo: photoUrl };
         const updatedCompanions = [...trip.companions, newCompanion];
         updateTrip({ companions: updatedCompanions });
@@ -1297,7 +1508,8 @@ export default function TravelApp() {
             lat: 22.3193, 
             lon: 114.1694, 
             currency: 'USD', 
-            days: [{ id: 'd1', date: new Date().toISOString().split('T')[0], title: 'Day 1', activities: [] }] 
+            days: [{ id: 'd1', date: new Date().toISOString().split('T')[0], title: 'Day 1', activities: [] }],
+            checklist: [] // Init checklist
         };
         setTrips(prev => [...prev, newTrip]);
     };
@@ -1311,7 +1523,6 @@ export default function TravelApp() {
 
     const handleAddDay = () => {
         const lastDay = trip.days[trip.days.length - 1];
-        // CRITICAL: use createUTCDate to avoid timezone shifts
         const lastDate = lastDay?.date ? createUTCDate(lastDay.date) : new Date();
         const nextDate = new Date(lastDate); 
         nextDate.setUTCDate(nextDate.getUTCDate() + 1);
@@ -1350,17 +1561,14 @@ export default function TravelApp() {
         if (!trip) return;
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         try { 
-            // 1. Fetch current budget expenses for this user
             const budgetSnap = await getDoc(getUserBudgetRef(user.uid));
             let sharedExpenses = [];
             
             if (budgetSnap.exists()) {
                 const allExpenses = budgetSnap.data().expenses || [];
-                // 2. Filter expenses that match the current trip ID (or are legacy orphans)
                 sharedExpenses = allExpenses.filter(e => e.tripId === trip.id || (!e.tripId && trips.length === 1));
             }
             
-            // 3. Create payload with expenses included
             const cleanTrip = JSON.parse(JSON.stringify({ ...trip, sharedExpenses })); 
             await setDoc(getSharedTripRef(code), cleanTrip); 
             setSharedCode(code); 
@@ -1379,43 +1587,33 @@ export default function TravelApp() {
             if (docSnap.exists()) { 
                 const data = docSnap.data();
                 const newTripId = Math.random().toString(36).substr(2, 9);
-                
-                // 1. Extract expenses
                 const sharedExpenses = data.sharedExpenses || [];
                 const tripData = { ...data };
                 delete tripData.sharedExpenses;
                 
-                // 2. Add trip
                 const newTrip = { 
                     ...tripData, 
                     id: newTripId, 
                     title: `${data.title} (Imported)` 
                 }; 
-                
                 setTrips(prev => [...prev, newTrip]); 
                 
-                // 3. Import Expenses (if any)
                 if (sharedExpenses.length > 0) {
-                     // Fetch my current budget
                      const myBudgetSnap = await getDoc(getUserBudgetRef(user.uid));
                      let myExpenses = [];
                      if (myBudgetSnap.exists()) myExpenses = myBudgetSnap.data().expenses || [];
-                     
-                     // Re-map shared expenses to the new Trip ID
                      const newExpenses = sharedExpenses.map(exp => ({
                          ...exp,
-                         id: Math.random().toString(36).substr(2, 9), // new ID to prevent collision
-                         tripId: newTripId // link to new imported trip
+                         id: Math.random().toString(36).substr(2, 9), 
+                         tripId: newTripId 
                      }));
-                     
-                     // Save merged budget
                      await setDoc(getUserBudgetRef(user.uid), { 
                         expenses: [...myExpenses, ...newExpenses] 
                      }, { merge: true });
                 }
 
                 setModalOpen(null); 
-                window.localStorage.removeItem('pendingShareId'); // Clear pending code
+                window.localStorage.removeItem('pendingShareId'); 
                 alert("Trip Imported Successfully!"); 
             } else { 
                 alert("Trip not found! Check the code."); 
@@ -1478,6 +1676,7 @@ export default function TravelApp() {
     const toggleViewMode = () => { 
         if (viewMode === 'timeline') setViewMode('calendar'); 
         else if (viewMode === 'calendar') setViewMode('budget'); 
+        else if (viewMode === 'budget') setViewMode('checklist');
         else setViewMode('timeline'); 
     };
 
@@ -1597,6 +1796,7 @@ export default function TravelApp() {
                             {viewMode === 'timeline' && <LayoutList size={18} />}
                             {viewMode === 'calendar' && <CalendarIcon size={18} />}
                             {viewMode === 'budget' && <DollarSign size={18} />}
+                            {viewMode === 'checklist' && <ClipboardList size={18} />}
                         </button>
                         
                         <div className="relative">
@@ -1672,6 +1872,9 @@ export default function TravelApp() {
             {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} />)}
             
             {viewMode === 'calendar' && (<CalendarView trip={trip} onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} />)}
+            
+            {/* NEW: Checklist View */}
+            {viewMode === 'checklist' && (<ChecklistView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} />)}
             
             {viewMode === 'timeline' && (
                 <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30 pb-safe">
@@ -1909,6 +2112,7 @@ export default function TravelApp() {
             )}
 
             <Modal isOpen={modalOpen === 'share'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Share Trip">
+                {/* ... existing share modal ... */}
                 <div className="space-y-6">
                     {sharedCode ? (
                         <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
@@ -1928,7 +2132,6 @@ export default function TravelApp() {
                                 </button>
                             </div>
 
-                            {/* --- NEW: Copy Direct Link Button --- */}
                             <div className="pt-2">
                                 <p className="text-xs text-slate-500 mb-2 font-medium">OR Share direct link (No Login Required)</p>
                                 <button 
@@ -1978,8 +2181,8 @@ export default function TravelApp() {
                 </div>
             </Modal>
             
-            {/* --- NEW: Exchange Rates Modal --- */}
             <Modal isOpen={modalOpen === 'rates'} onClose={() => setModalOpen(null)} title="Exchange Rates">
+                {/* ... existing rates modal ... */}
                 <div className="space-y-4">
                     <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -2015,6 +2218,7 @@ export default function TravelApp() {
             </Modal>
 
              <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
+                {/* ... existing settings modal ... */}
                 <div className="space-y-6">
                     <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-transparent dark:border-slate-700">
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
@@ -2090,7 +2294,6 @@ export default function TravelApp() {
                                 value={trip.startDate} 
                                 onChange={(e) => {
                                     const newStart = e.target.value;
-                                    // CRITICAL: Force UTC calculation
                                     const newDays = trip.days.map((day, idx) => {
                                         const d = createUTCDate(newStart);
                                         d.setUTCDate(d.getUTCDate() + idx);
@@ -2152,6 +2355,7 @@ export default function TravelApp() {
               </Modal>
             
             <Modal isOpen={!!imageEditState} onClose={() => setImageEditState(null)} title="Change Activity Photo">
+                {/* ... existing image edit modal ... */}
                 <div className="space-y-4">
                     <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center relative border border-slate-200 dark:border-slate-700">
                         <img src={imageEditState?.url} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558981806-ec527fa84c3d?auto=format&fit=crop&w=600&q=80'} />
