@@ -68,7 +68,8 @@ import {
   Square,        
   Sparkles,
   ArrowUpDown,
-  CalendarDays
+  CalendarDays,
+  ArrowRight
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -551,9 +552,9 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
 
 const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     const realWeather = weatherData[date];
-    // CHECK if date is Today or within valid forecast range to hide EST
-    const isToday = new Date().toISOString().split('T')[0] === date;
-    const isForecastRange = !isHistorical || isToday; 
+    const todayStr = new Date().toISOString().split('T')[0];
+    // --- UPDATED LOGIC: Only show Est. if date is strictly in the future ---
+    const isFuture = date > todayStr;
     
     let Icon = Sun;
     let tempText = "Loading...";
@@ -572,7 +573,7 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
 
     return (
         <div className={`flex items-center text-xs font-medium ${textClass} mt-1 min-h-[16px]`}>
-             {isHistorical && !isToday && realWeather && <span className="mr-1 text-[8px] uppercase font-bold tracking-wider opacity-70 text-indigo-500">Est.</span>}
+             {isHistorical && isFuture && realWeather && <span className="mr-1 text-[8px] uppercase font-bold tracking-wider opacity-70 text-indigo-500">Est.</span>}
             <Icon size={12} className={`mr-1 ${tempText === 'Fetching' ? 'animate-spin' : ''}`} /> {tempText}
         </div>
     );
@@ -800,6 +801,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
 // --- VIEW COMPONENTS ---
 
 const CalendarView = ({ trip, onSelectDay }) => {
+    const [selectedDayDetails, setSelectedDayDetails] = useState(null); // NEW: State for mobile popup
     const startDate = new Date(trip.startDate);
     const year = startDate.getFullYear();
     const month = startDate.getMonth();
@@ -874,7 +876,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
                     </div>
                 </div>
 
-                {/* MOBILE LIST VIEW */}
+                {/* MOBILE LIST VIEW (With Popup Interaction) */}
                 <div className="md:hidden space-y-4">
                     {days.filter(d => d).map((date, i) => {
                         const dateStr = date.toISOString().split('T')[0];
@@ -883,7 +885,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
                         return (
                             <div 
                                 key={dateStr} 
-                                onClick={() => onSelectDay(tripDay.idx)} 
+                                onClick={() => setSelectedDayDetails(tripDay)} // NEW: Opens modal first
                                 className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95 transition-transform"
                             >
                                 <div className="flex items-center gap-3 mb-3">
@@ -920,11 +922,53 @@ const CalendarView = ({ trip, onSelectDay }) => {
                     )}
                 </div>
              </div>
+
+             {/* NEW: MOBILE DAY DETAILS POPUP */}
+             <Modal isOpen={!!selectedDayDetails} onClose={() => setSelectedDayDetails(null)} title={selectedDayDetails?.title || 'Day Details'}>
+                 <div className="space-y-6">
+                     <div className="text-center">
+                         <h3 className="text-2xl font-black text-slate-900 dark:text-white">{selectedDayDetails?.date}</h3>
+                         <p className="text-slate-500">{selectedDayDetails?.activities?.length || 0} Scheduled Activities</p>
+                     </div>
+                     
+                     <div className="space-y-3 max-h-[50vh] overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-black/20 p-4 rounded-xl">
+                         {selectedDayDetails?.activities && selectedDayDetails.activities.length > 0 ? (
+                             selectedDayDetails.activities.sort((a,b) => (a.time || '').localeCompare(b.time || '')).map((act, i) => (
+                                 <div key={i} className="flex gap-4 p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                                     <div className="flex flex-col items-center justify-center min-w-[3rem] border-r border-slate-100 dark:border-slate-700 pr-3">
+                                         <span className="text-xs font-black text-slate-400">{act.time}</span>
+                                     </div>
+                                     <div>
+                                         <h4 className="font-bold text-slate-900 dark:text-white leading-tight">{act.title}</h4>
+                                         <p className="text-xs text-slate-500 line-clamp-1">{act.desc}</p>
+                                     </div>
+                                 </div>
+                             ))
+                         ) : (
+                             <div className="text-center text-slate-400 py-8 italic">No activities planned for this day.</div>
+                         )}
+                     </div>
+                     
+                     <div className="flex gap-3 pt-2">
+                        <button onClick={() => setSelectedDayDetails(null)} className="flex-1 py-3 font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-xl">Close</button>
+                        <button 
+                            onClick={() => {
+                                onSelectDay(selectedDayDetails.idx);
+                                setSelectedDayDetails(null);
+                            }} 
+                            className="flex-1 py-3 font-bold text-white bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 flex items-center justify-center gap-2"
+                        >
+                            Edit in Timeline <ArrowRight size={16} />
+                        </button>
+                     </div>
+                 </div>
+             </Modal>
         </main>
     );
 };
 
-// --- CHECKLIST VIEW COMPONENT ---
+// ... existing ChecklistView code ...
+
 const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     const [newItemText, setNewItemText] = useState('');
     const [targetDayId, setTargetDayId] = useState('general'); 
@@ -1161,6 +1205,7 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     );
 };
 
+// ... existing BudgetView code ...
 const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     const [expenses, setExpenses] = useState([]);
     const [targetCurrency, setTargetCurrency] = useState(trip?.currency || 'USD'); 
@@ -1349,6 +1394,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     );
 };
 
+// ... existing DashboardView ...
 const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 overflow-x-hidden">
@@ -1592,6 +1638,31 @@ export default function TravelApp() {
     
     const updateTrip = (updates) => { 
         setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); 
+    };
+    
+    // --- NEW: Global Optimize Function ---
+    const handleGlobalOptimize = () => {
+        const newDays = trip.days.map(day => {
+             const sortedActivities = [...day.activities].sort((a, b) => {
+                 const parseTime = (timeStr) => { 
+                    if(!timeStr) return 9999; 
+                    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i); 
+                    if (!match) return 9999; 
+                    let [_, hours, minutes, period] = match; 
+                    hours = parseInt(hours); 
+                    minutes = parseInt(minutes); 
+                    if (period) { 
+                        if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12; 
+                        if (period.toUpperCase() === 'AM' && hours === 12) hours = 0; 
+                    } 
+                    return hours * 60 + minutes; 
+                };
+                return parseTime(a.time) - parseTime(b.time);
+             });
+             return { ...day, activities: sortedActivities };
+        });
+        updateTrip({ days: newDays });
+        alert("All days have been sorted chronologically!");
     };
     
     const countryOptions = COUNTRY_DATA.map(c => ({ 
@@ -1969,7 +2040,6 @@ export default function TravelApp() {
                                 {trip.days.length} Days • {trip.days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} Activities
                             </p>
                             
-                            {/* MOVED: Change Cover Button is now inline with stats, no overlap */}
                             {isEditMode && (
                                 <button onClick={() => setModalOpen('settings')} className="bg-black/40 backdrop-blur-md hover:bg-black/60 text-white border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all shadow-lg ml-auto md:ml-4">
                                     <Camera size={14} /> Change Cover
@@ -2229,8 +2299,9 @@ export default function TravelApp() {
             )}
 
             <Modal isOpen={modalOpen === 'share'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Share Trip">
-                {/* ... existing share modal ... */}
-                <div className="space-y-6">
+                {/* ... existing share modal content ... */}
+                 {/* (Collapsed for brevity - unchanged) */}
+                 <div className="space-y-6">
                     {sharedCode ? (
                         <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
                             <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
@@ -2346,6 +2417,19 @@ export default function TravelApp() {
                             className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
                         >
                             <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+                    
+                    <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
+
+                    {/* NEW: Global Actions Section */}
+                    <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                        <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Quick Actions</h4>
+                        <button 
+                            onClick={handleGlobalOptimize} 
+                            className="w-full py-2.5 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg shadow-sm text-sm flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <Wand2 size={16} /> Sort All Days by Time
                         </button>
                     </div>
                     
