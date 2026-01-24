@@ -299,6 +299,27 @@ const createUTCDate = (dateStr) => {
 
 // --- CUSTOM UI COMPONENTS ---
 
+const NavButton = ({ icon: Icon, label, active, onClick }) => (
+    <button 
+        onClick={onClick}
+        className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-300 ${active ? 'text-indigo-600 dark:text-indigo-400 scale-105' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+    >
+        <div className={`p-1.5 rounded-xl transition-all ${active ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-transparent'}`}>
+            <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+        </div>
+        <span className={`text-[10px] font-bold mt-1 ${active ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+    </button>
+);
+
+const BottomNav = ({ viewMode, setViewMode }) => (
+  <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-2 pb-safe pt-2 z-50 flex justify-around items-center shadow-2xl safe-area-bottom">
+     <NavButton icon={LayoutList} label="Itinerary" active={viewMode === 'timeline'} onClick={() => setViewMode('timeline')} />
+     <NavButton icon={CalendarIcon} label="Calendar" active={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} />
+     <NavButton icon={DollarSign} label="Budget" active={viewMode === 'budget'} onClick={() => setViewMode('budget')} />
+     <NavButton icon={ClipboardList} label="Packing" active={viewMode === 'checklist'} onClick={() => setViewMode('checklist')} />
+  </div>
+);
+
 const CustomIconSelect = ({ options, value, onChange, placeholder }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
@@ -530,6 +551,10 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
 
 const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     const realWeather = weatherData[date];
+    // CHECK if date is Today or within valid forecast range to hide EST
+    const isToday = new Date().toISOString().split('T')[0] === date;
+    const isForecastRange = !isHistorical || isToday; 
+    
     let Icon = Sun;
     let tempText = "Loading...";
     let textClass = "text-slate-400";
@@ -547,7 +572,7 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
 
     return (
         <div className={`flex items-center text-xs font-medium ${textClass} mt-1 min-h-[16px]`}>
-             {isHistorical && realWeather && <span className="mr-1 text-[8px] uppercase font-bold tracking-wider opacity-70 text-indigo-500">Est.</span>}
+             {isHistorical && !isToday && realWeather && <span className="mr-1 text-[8px] uppercase font-bold tracking-wider opacity-70 text-indigo-500">Est.</span>}
             <Icon size={12} className={`mr-1 ${tempText === 'Fetching' ? 'animate-spin' : ''}`} /> {tempText}
         </div>
     );
@@ -568,6 +593,34 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
       </div>
     </div>
   );
+};
+
+// --- NEW: GENERIC CONFIRMATION MODAL ---
+const ConfirmationModal = ({ config, onClose }) => {
+    if (!config) return null;
+    return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-200 dark:border-slate-700 animate-in zoom-in-95">
+                 <div className="flex items-center gap-4 mb-4 text-red-600 dark:text-red-400">
+                     <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
+                         <AlertTriangle size={28} />
+                     </div>
+                     <h3 className="font-bold text-xl text-slate-900 dark:text-white">{config.title || "Confirm Action"}</h3>
+                 </div>
+                 <p className="text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
+                     {config.message || "Are you sure you want to proceed?"}
+                 </p>
+                 <div className="flex gap-3 justify-end">
+                     <button onClick={onClose} className="px-5 py-2.5 rounded-xl font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300">
+                         Cancel
+                     </button>
+                     <button onClick={() => { config.onConfirm(); onClose(); }} className="px-5 py-2.5 rounded-xl font-bold bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30 transition-colors">
+                         Yes, Delete
+                     </button>
+                 </div>
+             </div>
+        </div>
+    );
 };
 
 const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, targetCurrency }) => {
@@ -761,7 +814,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
     trip.days.forEach((d, idx) => { tripDayMap[d.date] = { ...d, idx }; });
 
     return (
-        <main className="max-w-6xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
+        <main className="max-w-6xl mx-auto mt-6 px-4 pb-24 space-y-6 animate-in fade-in">
              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white">
@@ -871,11 +924,11 @@ const CalendarView = ({ trip, onSelectDay }) => {
     );
 };
 
-// --- NEW: CHECKLIST VIEW COMPONENT (UPDATED WITH SORTING & GROUPING) ---
-const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
+// --- CHECKLIST VIEW COMPONENT ---
+const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     const [newItemText, setNewItemText] = useState('');
-    const [targetDayId, setTargetDayId] = useState('general'); // 'general' or specific day ID
-    const [sortBy, setSortBy] = useState('grouped'); // 'grouped', 'status', 'alpha'
+    const [targetDayId, setTargetDayId] = useState('general'); 
+    const [sortBy, setSortBy] = useState('grouped'); 
     const [isSortOpen, setIsSortOpen] = useState(false);
     
     const checklist = trip.checklist || [];
@@ -891,23 +944,19 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
             return list.sort((a, b) => a.text.localeCompare(b.text));
         }
         
-        // Default: 'grouped' (Done via render logic, but here we just sort by creation for fallback)
+        // Default: 'grouped' 
         return list.sort((a, b) => b.createdAt - a.createdAt);
     }, [checklist, sortBy]);
     
-    // Group Items for "Grouped" View
     const groupedItems = useMemo(() => {
         if (sortBy !== 'grouped') return null;
-        
         const groups = { 'general': [] };
         trip.days.forEach(d => groups[d.id] = []);
-        
         checklist.forEach(item => {
             const dId = item.dayId || 'general';
             if (!groups[dId]) groups['general'].push(item);
             else groups[dId].push(item);
         });
-        
         return groups;
     }, [checklist, trip.days, sortBy]);
 
@@ -922,7 +971,7 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
             text: newItemText.trim(),
             completed: false,
             createdAt: Date.now(),
-            dayId: targetDayId // Assign to specific day
+            dayId: targetDayId 
         };
         updateTrip({ checklist: [...checklist, newItem] });
         setNewItemText('');
@@ -936,8 +985,14 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
     };
     
     const handleDeleteItem = (itemId) => {
-        const updatedList = checklist.filter(item => item.id !== itemId);
-        updateTrip({ checklist: updatedList });
+        requestConfirm(
+            "Delete Item", 
+            "Are you sure you want to remove this item from your list?", 
+            () => {
+                const updatedList = checklist.filter(item => item.id !== itemId);
+                updateTrip({ checklist: updatedList });
+            }
+        );
     };
     
     const renderItem = (item) => (
@@ -952,7 +1007,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                 }
             `}
         >
-            {/* Larger Checkbox Target */}
             <div className={`
                 flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all duration-300
                 ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'}
@@ -964,7 +1018,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                 <span className={`block font-medium text-lg md:text-xl transition-all duration-300 break-words ${item.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>
                     {item.text}
                 </span>
-                {/* Show Day Tag only if sorting is NOT grouped (context needed) */}
                 {sortBy !== 'grouped' && item.dayId && item.dayId !== 'general' && (
                      <div className={`flex items-center gap-1 text-xs font-bold mt-1.5 ${item.completed ? 'text-slate-300' : 'text-indigo-500'}`}>
                         <CalendarDays size={12} />
@@ -973,7 +1026,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                 )}
             </div>
             
-            {/* Always visible delete button on mobile (opacity hack) */}
             <button 
                 onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
                 className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:bg-red-100"
@@ -987,8 +1039,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
     return (
         <main className="max-w-3xl mx-auto mt-6 px-4 pb-24 animate-in fade-in">
              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                
-                {/* Header & Progress */}
                 <div className="p-6 md:p-8 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 relative">
                     <div className="relative z-10 flex justify-between items-start mb-4">
                         <div>
@@ -999,7 +1049,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                             <p className="text-slate-500 dark:text-slate-400 mt-1">Keep track of essentials and to-dos.</p>
                         </div>
                          <div className="flex flex-col items-end gap-2">
-                             {/* SORT BUTTON */}
                              <div className="relative">
                                  <button 
                                     onClick={() => setIsSortOpen(!isSortOpen)}
@@ -1021,7 +1070,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                          </div>
                     </div>
                     
-                    {/* Animated Progress Bar */}
                     <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner relative">
                         <div 
                             className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700 ease-out flex items-center justify-end pr-2"
@@ -1031,7 +1079,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                         </div>
                     </div>
                     
-                    {/* Input Area - Wraps on mobile for easier typing */}
                     <form onSubmit={handleAddItem} className="mt-6 flex flex-col sm:flex-row gap-3">
                          <div className="relative min-w-[120px]">
                              <select 
@@ -1070,7 +1117,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                     </form>
                 </div>
 
-                {/* List Items */}
                 <div className="p-4 bg-slate-50 dark:bg-black/20 min-h-[300px]">
                      {checklist.length === 0 ? (
                          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -1082,17 +1128,14 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                          </div>
                      ) : (
                          <div className="space-y-4">
-                             {/* GROUPED VIEW */}
                              {sortBy === 'grouped' && groupedItems ? (
                                  <>
-                                    {/* General Section */}
                                     {groupedItems['general'].length > 0 && (
                                         <div className="space-y-2">
                                             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 flex items-center gap-1"><Star size={12}/> General Notes</h4>
                                             {groupedItems['general'].map(renderItem)}
                                         </div>
                                     )}
-                                    {/* Day Sections */}
                                     {trip.days.map((day, idx) => {
                                         const items = groupedItems[day.id];
                                         if (!items || items.length === 0) return null;
@@ -1105,11 +1148,9 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
                                             </div>
                                         );
                                     })}
-                                    {/* Show empty state if nothing matches */}
                                     {Object.values(groupedItems).every(arr => arr.length === 0) && <p className="text-center text-slate-400 text-sm py-4">No items found.</p>}
                                  </>
                              ) : (
-                                 /* FLAT SORTED VIEW */
                                  sortedList.map(renderItem)
                              )}
                          </div>
@@ -1120,13 +1161,13 @@ const ChecklistView = ({ trip, updateTrip, isEditMode }) => {
     );
 };
 
-const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
+const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     const [expenses, setExpenses] = useState([]);
     const [targetCurrency, setTargetCurrency] = useState(trip?.currency || 'USD'); 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState(null); 
-    const [sortBy, setSortBy] = useState('date'); // 'date', 'amount_high', 'amount_low', 'name'
-    const [isSortOpen, setIsSortOpen] = useState(false); // Added for toggle control
+    const [sortBy, setSortBy] = useState('date');
+    const [isSortOpen, setIsSortOpen] = useState(false);
 
     useEffect(() => {
         if(!currentUser) return;
@@ -1161,9 +1202,11 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     };
 
     const handleDelete = async (id) => { 
-        const updated = expenses.filter(e => e.id !== id); 
-        setExpenses(updated); 
-        await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); 
+        requestConfirm("Delete Expense", "Are you sure you want to delete this expense?", async () => {
+            const updated = expenses.filter(e => e.id !== id); 
+            setExpenses(updated); 
+            await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); 
+        });
     };
 
     const handleEditStart = (expense) => { 
@@ -1193,13 +1236,11 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
         } else if (sortBy === 'name') {
             sorted.sort((a, b) => a.name.localeCompare(b.name));
         }
-        // 'date' grouping logic handles itself below
         return sorted;
     }, [tripExpenses, sortBy]);
 
-    // Grouping for Date view
     const expensesByDate = useMemo(() => {
-        if (sortBy !== 'date') return {}; // Not needed for other views
+        if (sortBy !== 'date') return {};
         const grouped = {};
         tripExpenses.forEach(e => { 
             const d = e.date || 'Unscheduled'; 
@@ -1212,8 +1253,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
     const sortedDates = Object.keys(expensesByDate).sort();
 
     return (
-        <main className="max-w-2xl mx-auto mt-6 px-4 pb-20 space-y-6 animate-in fade-in">
-            {/* REMOVED overflow-hidden here */}
+        <main className="max-w-2xl mx-auto mt-6 px-4 pb-24 space-y-6 animate-in fade-in">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative">
                 <div className="relative z-10">
                     <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
@@ -1228,7 +1268,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                                 {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code} className="text-black">{c.code}</option>)}
                              </select>
                          </div>
-                         {/* SORT BUTTON with toggle logic */}
                          <div className="relative">
                              <button 
                                 onClick={() => setIsSortOpen(!isSortOpen)}
@@ -1254,7 +1293,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                     <div className="text-center py-10 text-slate-400"><Wallet size={48} className="mx-auto mb-2 opacity-20" /><p>No expenses for this trip yet.</p></div> 
                 ) : ( 
                     sortBy === 'date' ? (
-                        /* DATE GROUPED VIEW */
                         sortedDates.map(date => {
                             const dailyExpenses = expensesByDate[date];
                             const dailyTotalBase = dailyExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
@@ -1282,7 +1320,6 @@ const BudgetView = ({ currentUser, isEditMode, db, trip }) => {
                             );
                         })
                     ) : (
-                        /* FLAT LIST VIEW (Sorted) */
                         <div className="space-y-3 animate-in slide-in-from-bottom-2">
                             {sortedExpenses.map(e => (
                                 <ExpenseCard 
@@ -1406,6 +1443,11 @@ export default function TravelApp() {
     const [newCompanionName, setNewCompanionName] = useState('');
     const [newCompanionPhoto, setNewCompanionPhoto] = useState(null);
     const dayRefs = useRef([]);
+    const [confirmConfig, setConfirmConfig] = useState(null);
+
+    const requestConfirm = (title, message, onConfirm) => {
+        setConfirmConfig({ title, message, onConfirm });
+    };
 
     // --- URL PARAM LISTENER FOR DIRECT SHARING ---
     useEffect(() => {
@@ -1625,13 +1667,13 @@ export default function TravelApp() {
 
     const handleDeleteDay = (idx) => { 
         if (trip.days.length <= 1) return alert("You must have at least one day."); 
-        if (confirm(`Delete Day ${idx + 1}?`)) { 
+        requestConfirm("Delete Day", `Are you sure you want to delete Day ${idx + 1}? All activities in this day will be lost.`, () => {
             const newDays = trip.days.filter((_, i) => i !== idx); 
             updateTrip({ days: newDays }); 
             if (activeDayIdx >= newDays.length) { 
                 setActiveDayIdx(newDays.length - 1); 
             } 
-        } 
+        });
     };
     
     const handleSignOut = async () => { 
@@ -1711,9 +1753,11 @@ export default function TravelApp() {
     };
     
     const handleDeleteActivity = (dayIdx, actId) => { 
-        const newDays = [...trip.days]; 
-        newDays[dayIdx].activities = newDays[dayIdx].activities.filter(a => a.id !== actId); 
-        updateTrip({ days: newDays }); 
+        requestConfirm("Delete Activity", "Are you sure you want to delete this activity?", () => {
+            const newDays = [...trip.days]; 
+            newDays[dayIdx].activities = newDays[dayIdx].activities.filter(a => a.id !== actId); 
+            updateTrip({ days: newDays }); 
+        });
     };
     
     const updateActivityCost = (dayIdx, actId, val) => { 
@@ -1757,13 +1801,6 @@ export default function TravelApp() {
         newDays[activeDayIdx].activities = currentActivities;
         updateTrip({ days: newDays });
         alert("Route optimized based on time!");
-    };
-
-    const toggleViewMode = () => { 
-        if (viewMode === 'timeline') setViewMode('calendar'); 
-        else if (viewMode === 'calendar') setViewMode('budget'); 
-        else if (viewMode === 'budget') setViewMode('checklist');
-        else setViewMode('timeline'); 
     };
 
     if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
@@ -1843,7 +1880,7 @@ export default function TravelApp() {
     const activeDay = trip.days[activeDayIdx] || trip.days[0];
 
     return (
-        <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-20 overflow-x-hidden`}>
+        <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-24 overflow-x-hidden`}>
             <div className="relative h-[40vh] md:h-[50vh] w-full group">
                 <div className="absolute inset-0 overflow-hidden rounded-b-3xl">
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
@@ -1874,17 +1911,6 @@ export default function TravelApp() {
                             {isEditMode ? <Unlock size={18} /> : <Lock size={18} />}
                         </button>
                         
-                        <button 
-                            onClick={toggleViewMode} 
-                            className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${viewMode !== 'timeline' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-black/30 border-white/20'}`} 
-                            title="Change View"
-                        >
-                            {viewMode === 'timeline' && <LayoutList size={18} />}
-                            {viewMode === 'calendar' && <CalendarIcon size={18} />}
-                            {viewMode === 'budget' && <DollarSign size={18} />}
-                            {viewMode === 'checklist' && <ClipboardList size={18} />}
-                        </button>
-                        
                         <div className="relative">
                             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md hover:bg-black/50 transition-colors">
                                 {isMenuOpen ? <X size={18} /> : <MenuIcon size={18} />}
@@ -1909,14 +1935,6 @@ export default function TravelApp() {
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 z-20 p-6 md:p-12 max-w-6xl mx-auto">
                     <div className="animate-in slide-in-from-bottom-5 duration-700 relative">
-                        {isEditMode && (
-                            <div className="absolute right-0 bottom-2">
-                                <button onClick={() => setModalOpen('settings')} className="bg-black/40 backdrop-blur-md hover:bg-black/60 text-white border border-white/20 px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all shadow-lg">
-                                    <Camera size={14} /> Change Cover
-                                </button>
-                            </div>
-                        )}
-                        
                         <div className="flex items-center gap-3 mb-4">
                             <span className="px-3 py-1 bg-indigo-500/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg backdrop-blur-sm">
                                 {trip.startDate}
@@ -1945,25 +1963,35 @@ export default function TravelApp() {
                             <h1 className="text-4xl md:text-6xl font-black text-white leading-tight drop-shadow-lg mb-2">{trip.title}</h1>
                         )}
                         
-                        <div className="flex gap-4 items-center">
+                        <div className="flex flex-wrap gap-4 items-center">
                             <div className="h-1 w-12 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
                             <p className="text-white/90 text-lg md:text-xl font-medium drop-shadow-md">
                                 {trip.days.length} Days • {trip.days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} Activities
                             </p>
+                            
+                            {/* MOVED: Change Cover Button is now inline with stats, no overlap */}
+                            {isEditMode && (
+                                <button onClick={() => setModalOpen('settings')} className="bg-black/40 backdrop-blur-md hover:bg-black/60 text-white border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all shadow-lg ml-auto md:ml-4">
+                                    <Camera size={14} /> Change Cover
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} />)}
+            {/* --- NEW BOTTOM NAVIGATION --- */}
+            <BottomNav viewMode={viewMode} setViewMode={setViewMode} />
+            <ConfirmationModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+
+            {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} requestConfirm={requestConfirm} />)}
             
             {viewMode === 'calendar' && (<CalendarView trip={trip} onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} />)}
             
-            {/* NEW: Checklist View */}
-            {viewMode === 'checklist' && (<ChecklistView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} />)}
+            {viewMode === 'checklist' && (<ChecklistView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} requestConfirm={requestConfirm} />)}
             
             {viewMode === 'timeline' && (
-                <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30 pb-safe">
+                <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30">
                     <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-20 z-40 mt-8">
                         {trip.days.map((day, idx) => (
                             <div key={day.id} ref={el => dayRefs.current[idx] = el} className="relative group/day">
@@ -1976,8 +2004,11 @@ export default function TravelApp() {
                                     <WeatherDisplay date={day.date} weatherData={weatherData} isError={weatherError} isHistorical={isHistorical} />
                                 </button>
                                 {isEditMode && (
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteDay(idx); }} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 opacity-0 group-hover/day:opacity-100 transition-opacity z-50">
-                                        <X size={10} strokeWidth={3} />
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteDay(idx); }} 
+                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 z-50 transition-transform active:scale-95"
+                                    >
+                                        <X size={12} strokeWidth={3} />
                                     </button>
                                 )}
                             </div>
