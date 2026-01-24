@@ -60,7 +60,7 @@ import {
   RefreshCw, 
   WifiOff, 
   History,
-  Link as LinkIcon,
+  Link as LinkIcon, 
   Eye,
   Banknote,
   ClipboardList, 
@@ -967,8 +967,6 @@ const CalendarView = ({ trip, onSelectDay }) => {
     );
 };
 
-// ... existing ChecklistView code ...
-
 const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     const [newItemText, setNewItemText] = useState('');
     const [targetDayId, setTargetDayId] = useState('general'); 
@@ -1044,124 +1042,124 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
             key={item.id}
             onClick={() => handleToggleItem(item.id)}
             className={`
-                group flex items-center gap-5 p-5 rounded-3xl cursor-pointer transition-all duration-300 border-2 min-h-[5rem]
+                group flex items-start gap-3 p-3 mb-2 rounded-xl cursor-pointer transition-all duration-200 border
                 ${item.completed 
-                    ? 'bg-slate-100 dark:bg-slate-800/50 border-transparent opacity-60' 
-                    : 'bg-white dark:bg-slate-800 border-white dark:border-slate-700 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 hover:shadow-md'
+                    ? 'bg-slate-100 dark:bg-slate-800/40 border-transparent' 
+                    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-sm'
                 }
             `}
         >
+            {/* Checkbox Area */}
             <div className={`
-                flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all duration-300
-                ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'}
+                mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors
+                ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600'}
             `}>
-                {item.completed && <Check size={20} className="text-white animate-in zoom-in duration-200" strokeWidth={4} />}
+                {item.completed && <Check size={12} className="text-white" strokeWidth={3} />}
             </div>
             
+            {/* Content Area */}
             <div className="flex-grow min-w-0">
-                <span className={`block font-medium text-lg md:text-xl transition-all duration-300 break-words ${item.completed ? 'line-through text-slate-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                <p className={`text-sm font-medium leading-tight break-words ${item.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
                     {item.text}
-                </span>
+                </p>
+                
+                {/* Context Tag (Day) - Only if not grouped by day already to avoid redundancy, or if needed */}
                 {sortBy !== 'grouped' && item.dayId && item.dayId !== 'general' && (
-                     <div className={`flex items-center gap-1 text-xs font-bold mt-1.5 ${item.completed ? 'text-slate-300' : 'text-indigo-500'}`}>
-                        <CalendarDays size={12} />
-                        {trip.days.find(d => d.id === item.dayId)?.title || 'Scheduled'}
+                     <div className="flex items-center gap-1 mt-1.5">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded">
+                            {trip.days.find(d => d.id === item.dayId)?.title || 'Scheduled'}
+                        </span>
                     </div>
                 )}
             </div>
             
+            {/* Delete Action - Always visible on mobile, subtle */}
             <button 
                 onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                className="p-3 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:bg-red-100"
-                title="Delete item"
+                className="p-2 -mr-2 -mt-2 text-slate-300 hover:text-red-500 transition-colors"
+                aria-label="Delete item"
             >
-                <Trash2 size={20} />
+                <Trash2 size={16} />
             </button>
         </div>
     );
 
     return (
-        <main className="max-w-3xl mx-auto mt-6 px-4 pb-24 animate-in fade-in">
-             <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-                <div className="p-6 md:p-8 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 relative">
-                    <div className="relative z-10 flex justify-between items-start mb-4">
+        <main className="max-w-xl mx-auto mt-4 px-4 pb-24 animate-in fade-in"> 
+             {/* Reduced max-w to xl for better focus on mobile/tablet */}
+             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+                
+                {/* Compact Header */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex justify-between items-center mb-4">
                         <div>
-                            <h2 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-                                <ClipboardList className="text-indigo-500" size={32} />
-                                Notes & Packing
+                            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                <ClipboardList className="text-indigo-600" size={20} />
+                                Checklist
                             </h2>
-                            <p className="text-slate-500 dark:text-slate-400 mt-1">Keep track of essentials and to-dos.</p>
+                            <p className="text-xs text-slate-500">
+                                {checklist.length} items • {Math.round(progress)}% done
+                            </p>
                         </div>
-                         <div className="flex flex-col items-end gap-2">
+                        
+                         {/* Controls */}
+                         <div className="flex items-center gap-2">
                              <div className="relative">
                                  <button 
                                     onClick={() => setIsSortOpen(!isSortOpen)}
-                                    className="bg-white dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-colors shadow-sm"
+                                    className="p-2 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 shadow-sm"
                                  >
-                                     <ArrowUpDown size={18} />
+                                     <ArrowUpDown size={16} />
                                  </button>
                                  {isSortOpen && (
-                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                                    <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50">
                                          <button onClick={() => { setSortBy('grouped'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'grouped' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>By Day (Grouped)</button>
                                          <button onClick={() => { setSortBy('status'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'status' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Status (Incomplete)</button>
                                          <button onClick={() => { setSortBy('alpha'); setIsSortOpen(false); }} className={`w-full text-left px-4 py-2 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-700 ${sortBy === 'alpha' ? 'text-indigo-600' : 'text-slate-700 dark:text-slate-300'}`}>Alphabetical (A-Z)</button>
                                     </div>
                                  )}
                              </div>
-                             <div className="text-right">
-                                 <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{Math.round(progress)}%</div>
-                             </div>
                          </div>
                     </div>
                     
-                    <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner relative">
-                        <div 
-                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700 ease-out flex items-center justify-end pr-2"
-                            style={{ width: `${progress}%` }}
-                        >
-                            {progress >= 100 && <Sparkles size={12} className="text-white animate-pulse" />}
-                        </div>
-                    </div>
-                    
-                    <form onSubmit={handleAddItem} className="mt-6 flex flex-col sm:flex-row gap-3">
-                         <div className="relative min-w-[120px]">
+                    {/* Input Area - Optimized for Mobile */}
+                    <form onSubmit={handleAddItem} className="flex gap-2">
+                         {/* Day Selector - Minimalist */}
+                         <div className="relative">
                              <select 
                                 value={targetDayId}
                                 onChange={(e) => setTargetDayId(e.target.value)}
-                                className="w-full h-12 sm:h-14 pl-10 pr-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 outline-none focus:border-indigo-500 font-bold text-sm appearance-none cursor-pointer text-slate-700 dark:text-slate-300 shadow-sm"
+                                className="h-12 pl-8 pr-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold outline-none focus:border-indigo-500 appearance-none w-[4.5rem]"
                              >
-                                 <option value="general">General</option>
+                                 <option value="general">All</option>
                                  {trip.days.map((day, idx) => (
-                                     <option key={day.id} value={day.id}>{day.title}</option>
+                                     <option key={day.id} value={day.id}>D{idx+1}</option>
                                  ))}
                              </select>
-                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                {targetDayId === 'general' ? <Star size={18} /> : <CalendarDays size={18} />}
-                             </div>
-                             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                <ChevronDown size={14} />
+                             <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                <CalendarDays size={14} />
                              </div>
                          </div>
                          
-                         <div className="flex-grow flex gap-2">
-                             <input 
-                                value={newItemText}
-                                onChange={(e) => setNewItemText(e.target.value)}
-                                placeholder="Add item..."
-                                className="w-full h-12 sm:h-14 px-4 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-100 dark:border-slate-700 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-medium text-base transition-all dark:text-white shadow-sm"
-                             />
-                             <button 
-                                type="submit" 
-                                disabled={!newItemText.trim()}
-                                className="h-12 sm:h-14 w-14 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 text-white rounded-xl flex-shrink-0 flex items-center justify-center transition-all shadow-md active:scale-95"
-                             >
-                                 <Plus size={28} strokeWidth={3} />
-                             </button>
-                         </div>
+                         <input 
+                            value={newItemText}
+                            onChange={(e) => setNewItemText(e.target.value)}
+                            placeholder="Add new item..."
+                            className="flex-grow h-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-base outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-white"
+                         />
+                         
+                         <button 
+                            type="submit" 
+                            disabled={!newItemText.trim()}
+                            className="h-12 w-12 bg-indigo-600 text-white rounded-lg flex items-center justify-center shadow-sm disabled:opacity-50 disabled:bg-slate-300"
+                         >
+                             <Plus size={18} strokeWidth={3} />
+                         </button>
                     </form>
                 </div>
 
-                <div className="p-4 bg-slate-50 dark:bg-black/20 min-h-[300px]">
+                {/* List Content */}
+                <div className="p-3 bg-slate-50 dark:bg-black/20 min-h-[300px]">
                      {checklist.length === 0 ? (
                          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
@@ -1176,7 +1174,7 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                                  <>
                                     {groupedItems['general'].length > 0 && (
                                         <div className="space-y-2">
-                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 flex items-center gap-1"><Star size={12}/> General Notes</h4>
+                                            <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center gap-1"><Star size={10}/> General Notes</h4>
                                             {groupedItems['general'].map(renderItem)}
                                         </div>
                                     )}
@@ -1185,8 +1183,8 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                                         if (!items || items.length === 0) return null;
                                         return (
                                             <div key={day.id} className="space-y-2 pt-2">
-                                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-2 flex items-center gap-1">
-                                                    <CalendarDays size={12}/> {day.title} <span className="opacity-50">• {day.date}</span>
+                                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center gap-1">
+                                                    <CalendarDays size={10}/> {day.title} <span className="opacity-50">• {day.date}</span>
                                                 </h4>
                                                 {items.map(renderItem)}
                                             </div>
@@ -1205,7 +1203,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     );
 };
 
-// ... existing BudgetView code ...
 const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     const [expenses, setExpenses] = useState([]);
     const [targetCurrency, setTargetCurrency] = useState(trip?.currency || 'USD'); 
