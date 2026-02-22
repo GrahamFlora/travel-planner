@@ -411,9 +411,13 @@ const Toast = ({ message, onClose }) => (
   </div>
 );
 
-const Logo = ({ size = "md", onClick }) => {
+// --- FIXED LOGO COMPONENT ---
+const Logo = ({ size = "md", onClick, forceWhite = false }) => {
     const dim = size === "lg" ? "w-16 h-16" : "w-8 h-8";
     const txt = size === "lg" ? "text-3xl" : "text-xl";
+    // Dynamically choose text color based on the forceWhite prop
+    const textColor = forceWhite ? "text-white" : "text-slate-900 dark:text-white";
+    
     return (
         <button 
             onClick={onClick} 
@@ -422,8 +426,8 @@ const Logo = ({ size = "md", onClick }) => {
             <div className={`${dim} bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 transform rotate-3`}>
                 <Plane className="text-white transform -rotate-3" size={size === "lg" ? 32 : 18} />
             </div>
-            <span className={`font-black tracking-tight text-white ${txt}`}>
-                Horizon<span className="text-indigo-400">Planner</span>
+            <span className={`font-black tracking-tight ${textColor} ${txt}`}>
+                Horizon<span className="text-indigo-500 dark:text-indigo-400">Planner</span>
             </span>
         </button>
     );
@@ -512,7 +516,8 @@ const LoginPage = ({ onLogin }) => {
             {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
             
             <main className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black p-8 border border-white/10 z-10 animate-in fade-in zoom-in duration-300">
-                <div className="flex justify-center mb-8"><Logo size="lg" /></div>
+                {/* Applied forceWhite since the login screen is always dark */}
+                <div className="flex justify-center mb-8"><Logo size="lg" forceWhite={true} /></div>
                 
                 <h2 className="text-3xl font-black text-center mb-2 text-white tracking-tight">
                     {isSignUp ? "Create Account" : "Welcome Back"}
@@ -1598,31 +1603,34 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
 
                  {/* --- Search & Sort Controls --- */}
                  {trips.length > 0 && (
-                     <div className="flex flex-col sm:flex-row gap-4 z-10 relative pt-2">
+                     <div className="flex gap-2 sm:gap-4 z-10 relative pt-2 w-full">
                          <div className="relative flex-grow">
-                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                 <Search size={20} className="text-slate-400" />
+                             <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none">
+                                 <Search size={18} className="text-slate-400 md:w-5 md:h-5" />
                              </div>
                              <input 
                                  type="text" 
-                                 placeholder="Search your trips..." 
+                                 placeholder="Search trips..." 
                                  value={searchQuery}
                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                 className="w-full pl-12 pr-4 py-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-all font-medium"
+                                 className="w-full pl-9 md:pl-12 pr-4 py-2.5 md:py-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl text-sm md:text-base text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-all font-medium"
                              />
                          </div>
-                         <div className="relative min-w-[180px]">
+                         <div className="relative flex-shrink-0 w-[125px] sm:w-[150px] md:w-[180px]">
+                             <div className="absolute inset-y-0 left-0 pl-3 md:pl-4 flex items-center pointer-events-none">
+                                 <Filter size={16} className="text-slate-400 md:w-5 md:h-5" />
+                             </div>
                              <select 
                                  value={sortBy}
                                  onChange={(e) => setSortBy(e.target.value)}
-                                 className="w-full appearance-none pl-4 pr-10 py-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-700 dark:text-slate-300 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm cursor-pointer"
+                                 className="w-full appearance-none pl-9 md:pl-11 pr-8 md:pr-10 py-2.5 md:py-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-xl md:rounded-2xl text-sm md:text-base text-slate-700 dark:text-slate-300 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm cursor-pointer"
                              >
-                                 <option value="date_desc">Newest First</option>
-                                 <option value="date_asc">Oldest First</option>
-                                 <option value="name_asc">Name (A-Z)</option>
+                                 <option value="date_desc">Newest</option>
+                                 <option value="date_asc">Oldest</option>
+                                 <option value="name_asc">A-Z</option>
                              </select>
-                             <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
-                                 <ArrowUpDown size={16} />
+                             <div className="absolute inset-y-0 right-0 flex items-center pr-2 md:pr-4 pointer-events-none text-slate-400">
+                                 <ArrowUpDown size={14} className="md:w-4 md:h-4" />
                              </div>
                          </div>
                      </div>
@@ -2274,7 +2282,8 @@ export default function TravelApp() {
                 </div>
                 
                 <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
-                      <Logo size="sm" onClick={() => { setView('dashboard'); setCurrentTripId(null); }} />
+                      {/* Applied forceWhite here since it sits on top of the dark image gradient */}
+                      <Logo size="sm" onClick={() => { setView('dashboard'); setCurrentTripId(null); }} forceWhite={true} />
                       
                       <div className="flex gap-2 relative">
                         <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/30 backdrop-blur-md rounded-full border border-white/10 mr-2">
