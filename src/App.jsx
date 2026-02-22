@@ -72,7 +72,8 @@ import {
   ArrowRight,
   Navigation,
   Paperclip,
-  FileText
+  FileText,
+  Fingerprint
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -225,7 +226,7 @@ const formatCurrency = (amount, currencyCode) => {
 };
 
 const compressImage = async (file, maxWidth = 150, quality = 0.7) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = (event) => {
@@ -247,7 +248,9 @@ const compressImage = async (file, maxWidth = 150, quality = 0.7) => {
                 ctx.drawImage(img, 0, 0, width, height);
                 resolve(canvas.toDataURL('image/jpeg', quality));
             };
+            img.onerror = (error) => reject(error);
         };
+        reader.onerror = (error) => reject(error);
     });
 };
 
@@ -321,7 +324,6 @@ const NavButton = ({ icon: Icon, label, active, onClick }) => (
     </button>
 );
 
-// --- REVAMPED FLOATING FOOTER ---
 const BottomNav = ({ viewMode, setViewMode }) => (
   <div className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-3xl z-50 flex justify-around items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] px-2 py-1 safe-area-bottom ring-1 ring-slate-900/5 dark:ring-white/10">
      <NavButton icon={LayoutList} label="Itinerary" active={viewMode === 'timeline'} onClick={() => setViewMode('timeline')} />
@@ -420,13 +422,14 @@ const Logo = ({ size = "md", onClick }) => {
             <div className={`${dim} bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 transform rotate-3`}>
                 <Plane className="text-white transform -rotate-3" size={size === "lg" ? 32 : 18} />
             </div>
-            <span className={`font-black tracking-tight text-slate-900 dark:text-white ${txt}`}>
-                Horizon<span className="text-indigo-500">Planner</span>
+            <span className={`font-black tracking-tight text-white ${txt}`}>
+                Horizon<span className="text-indigo-400">Planner</span>
             </span>
         </button>
     );
 };
 
+// --- REDESIGNED LOGIN PAGE ---
 const LoginPage = ({ onLogin }) => {
     const [isSignUp, setIsSignUp] = useState(false);
     const [email, setEmail] = useState('');
@@ -456,6 +459,43 @@ const LoginPage = ({ onLogin }) => {
         }
     };
 
+    const handleBiometricLogin = async () => {
+        if (!window.PublicKeyCredential) {
+            alert("Biometrics (WebAuthn) are not supported on this browser.");
+            return;
+        }
+
+        try {
+            const available = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            if (!available) {
+                alert("No Face ID or Fingerprint sensor detected on this device.");
+                return;
+            }
+
+            // Trigger the native prompt using a dummy challenge to show functionality.
+            // In a real app, this challenge comes from your server.
+            const challenge = new Uint8Array(32);
+            window.crypto.getRandomValues(challenge);
+
+            await navigator.credentials.get({
+                publicKey: {
+                    challenge: challenge,
+                    rpId: window.location.hostname,
+                    userVerification: "required",
+                }
+            });
+
+        } catch (err) {
+            // Because we don't have a registered passkey on a backend for this domain, it will fail.
+            // We catch it and show a graceful explanation.
+            if (err.name === 'NotAllowedError') {
+                console.log("User canceled biometric prompt.");
+            } else {
+                alert("Passkey integration requires Firebase Authentication setup in your console. Please sign in with email/password for now.");
+            }
+        }
+    };
+
     useEffect(() => {
         if(toastMsg) { 
             const timer = setTimeout(() => setToastMsg(null), 4000); 
@@ -464,19 +504,62 @@ const LoginPage = ({ onLogin }) => {
     }, [toastMsg]);
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            {/* Ambient Dark Mode Glows */}
+            <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none" />
+
             {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
-            <main className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 border border-slate-200 dark:border-slate-800 animate-in fade-in zoom-in duration-300">
+            
+            <main className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black p-8 border border-white/10 z-10 animate-in fade-in zoom-in duration-300">
                 <div className="flex justify-center mb-8"><Logo size="lg" /></div>
-                <h2 className="text-2xl font-bold text-center mb-2 text-slate-900 dark:text-white">{isSignUp ? "Create your account" : "Welcome back"}</h2>
-                <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">{isSignUp ? "Start planning your next adventure." : "Enter your details to access your trips."}</p>
+                
+                <h2 className="text-3xl font-black text-center mb-2 text-white tracking-tight">
+                    {isSignUp ? "Create Account" : "Welcome Back"}
+                </h2>
+                <p className="text-center text-slate-400 mb-8 text-sm">
+                    {isSignUp ? "Start planning your next adventure." : "Sign in to access your trips."}
+                </p>
+                
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {error && <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 text-xs rounded-xl flex items-center gap-2"><AlertTriangle size={14} /> {error}</div>}
-                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Email</label><input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="you@example.com" /></div>
-                    <div className="space-y-1"><label className="text-xs font-bold text-slate-500 uppercase">Password</label><input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white" placeholder="••••••••" /></div>
-                    <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">{loading && <Loader2 className="animate-spin" size={20} />} {isSignUp ? "Sign Up" : "Sign In"}</button>
+                    {error && <div className="p-3 bg-red-900/30 border border-red-500/50 text-red-400 text-xs rounded-xl flex items-center gap-2"><AlertTriangle size={14} /> {error}</div>}
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Email</label>
+                        <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-white placeholder:text-slate-600" placeholder="you@example.com" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1">Password</label>
+                        <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-slate-950/50 border border-slate-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-white placeholder:text-slate-600" placeholder="••••••••" />
+                    </div>
+                    <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(79,70,229,0.3)] transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 mt-2">
+                        {loading && <Loader2 className="animate-spin" size={20} />} {isSignUp ? "Sign Up" : "Sign In"}
+                    </button>
                 </form>
-                <div className="mt-6 text-center"><button onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors">{isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}</button></div>
+
+                {/* Biometric Login Integration */}
+                {!isSignUp && (
+                    <div className="mt-6">
+                        <div className="relative flex items-center py-2">
+                            <div className="flex-grow border-t border-slate-800"></div>
+                            <span className="flex-shrink-0 mx-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Or</span>
+                            <div className="flex-grow border-t border-slate-800"></div>
+                        </div>
+                        <button 
+                            onClick={handleBiometricLogin} 
+                            type="button" 
+                            className="w-full mt-4 bg-slate-800/50 hover:bg-slate-800 text-white font-bold py-4 rounded-xl shadow-sm border border-slate-700 hover:border-slate-600 transition-all active:scale-[0.98] flex justify-center items-center gap-3 group"
+                        >
+                            <Fingerprint size={20} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+                            Sign in with Passkey / Face ID
+                        </button>
+                    </div>
+                )}
+
+                <div className="mt-8 text-center">
+                    <button onClick={() => setIsSignUp(!isSignUp)} className="text-sm font-semibold text-slate-400 hover:text-white transition-colors">
+                        {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+                    </button>
+                </div>
             </main>
         </div>
     );
@@ -498,7 +581,7 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
             try {
                 const startStr = startDate || new Date().toISOString().split('T')[0];
                 const startObj = createUTCDate(startStr);
-                const today = new Date(); // Local time
+                const today = new Date(); 
                 
                 const diffTime = startObj - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
@@ -697,7 +780,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, onViewReceipt, isEditMode, cur
 
 // --- FORMS ---
 
-const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialData, targetCurrency }) => {
+const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialData, targetCurrency, onCancel }) => {
     const [name, setName] = useState('');
     const [amountInput, setAmountInput] = useState('');
     const [category, setCategory] = useState('food');
@@ -725,15 +808,23 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
     const handleReceiptUpload = async (e) => {
         const file = e.target.files[0];
         if(!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            alert("Please upload a valid image file.");
+            e.target.value = null;
+            return;
+        }
+
         setIsCompressing(true);
         try {
-            // Compress to max 600px width for receipts to keep storage usage low
-            const compressed = await compressImage(file, 600, 0.6);
+            const compressed = await compressImage(file, 400, 0.5);
             setReceiptImage(compressed);
         } catch(err) {
             console.error("Image compression failed", err);
+            alert("Failed to process image.");
         } finally {
             setIsCompressing(false);
+            e.target.value = null;
         }
     };
 
@@ -848,12 +939,21 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                 <IconPicker selected={category} onSelect={setCategory} />
             </div>
             
-            <button 
-                type="submit" 
-                className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-3 rounded-xl mt-2 active:scale-95 transition-transform"
-            >
-                {initialData ? 'Update Expense' : 'Save Expense'}
-            </button>
+            <div className="flex gap-3 pt-2">
+                <button 
+                    type="button" 
+                    onClick={onCancel}
+                    className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl transition-colors hover:bg-slate-200 dark:hover:bg-slate-600"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="submit" 
+                    className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-500/30"
+                >
+                    {initialData ? 'Update Expense' : 'Save Expense'}
+                </button>
+            </div>
         </form>
     );
 };
@@ -1448,60 +1548,140 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     );
 };
 
-const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip, onShareTrip }) => {
+// --- REDESIGNED DASHBOARD ---
+const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip, onShareTrip, isDarkMode, onToggleTheme }) => {
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('date_desc');
+
+    const filteredTrips = useMemo(() => {
+        let filtered = trips.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()));
+        return filtered.sort((a, b) => {
+            if (sortBy === 'date_desc') return new Date(b.startDate) - new Date(a.startDate);
+            if (sortBy === 'date_asc') return new Date(a.startDate) - new Date(b.startDate);
+            if (sortBy === 'name_asc') return a.title.localeCompare(b.title);
+            return 0;
+        });
+    }, [trips, searchQuery, sortBy]);
+
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 overflow-x-hidden">
-            <main className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                 <div className="flex justify-between items-center">
-                    <Logo size="lg" />
-                    <div className="flex items-center gap-3">
-                        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                <User size={14} />
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 overflow-x-hidden relative selection:bg-indigo-500/30">
+            {/* Ambient Background Glows */}
+            <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] md:w-[800px] h-[300px] md:h-[400px] bg-indigo-500/10 dark:bg-indigo-500/15 blur-[100px] md:blur-[120px] rounded-full pointer-events-none" />
+
+            <main className="max-w-5xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 relative z-10">
+                 {/* Header Nav */}
+                 <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 rounded-3xl border border-white/20 dark:border-slate-800 shadow-sm">
+                    <Logo size="md" />
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <button onClick={onToggleTheme} className="p-2 md:p-2.5 bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700" title="Toggle Theme">
+                            {isDarkMode ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-600" />}
+                        </button>
+                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-slate-100/50 dark:bg-slate-800/50 rounded-full border border-slate-200 dark:border-slate-700">
+                            <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <User size={12} className="md:w-[14px] md:h-[14px]" />
                             </div>
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 max-w-[100px] truncate">{userEmail || 'Guest'}</span>
+                            <span className="text-[10px] md:text-xs font-bold text-slate-700 dark:text-slate-300 max-w-[100px] md:max-w-[150px] truncate">{userEmail || 'Guest'}</span>
                         </div>
-                        <button onClick={onSignOut} className="p-2.5 bg-red-50 text-red-500 rounded-full hover:bg-red-100 transition-colors">
-                            <LogOut size={20} />
+                        <button onClick={onSignOut} className="p-2 md:p-2.5 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-100 dark:border-red-900/50">
+                            <LogOut size={18} />
                         </button>
                     </div>
                  </div>
                  
-                 <div className="grid md:grid-cols-2 gap-6 pb-12">
-                    {trips.map(trip => (
-                        <button key={trip.id} onClick={() => onSelectTrip(trip.id)} className="relative group text-left h-48 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
-                             <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-10" />
-                             <img src={trip.coverImage} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                 {/* Welcome Text */}
+                 <div className="space-y-2">
+                    <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
+                        Where to next? <span className="inline-block animate-bounce origin-bottom">✈️</span>
+                    </h1>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-lg">You have {trips.length} upcoming adventures planned.</p>
+                 </div>
+
+                 {/* --- Search & Sort Controls --- */}
+                 {trips.length > 0 && (
+                     <div className="flex flex-col sm:flex-row gap-4 z-10 relative pt-2">
+                         <div className="relative flex-grow">
+                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                 <Search size={20} className="text-slate-400" />
+                             </div>
+                             <input 
+                                 type="text" 
+                                 placeholder="Search your trips..." 
+                                 value={searchQuery}
+                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                 className="w-full pl-12 pr-4 py-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-all font-medium"
+                             />
+                         </div>
+                         <div className="relative min-w-[180px]">
+                             <select 
+                                 value={sortBy}
+                                 onChange={(e) => setSortBy(e.target.value)}
+                                 className="w-full appearance-none pl-4 pr-10 py-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-700 dark:text-slate-300 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm cursor-pointer"
+                             >
+                                 <option value="date_desc">Newest First</option>
+                                 <option value="date_asc">Oldest First</option>
+                                 <option value="name_asc">Name (A-Z)</option>
+                             </select>
+                             <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400">
+                                 <ArrowUpDown size={16} />
+                             </div>
+                         </div>
+                     </div>
+                 )}
+
+                 {/* Premium Cards Grid */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12">
+                    
+                    {/* New Trip Card - Premium Gradient */}
+                    <button onClick={onNewTrip} className="group relative h-64 rounded-3xl overflow-hidden shadow-xl hover:shadow-indigo-500/25 transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-indigo-500 to-purple-600 p-6 flex flex-col items-start justify-end text-white border border-white/10 text-left">
+                        <div className="absolute top-6 right-6 w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform">
+                            <Plus size={28} strokeWidth={2.5} />
+                        </div>
+                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <h3 className="text-3xl font-black z-10 leading-none mb-1">Plan New<br/>Trip</h3>
+                        <p className="text-sm font-medium text-indigo-100 z-10">Start a blank itinerary</p>
+                    </button>
+                    
+                    {/* Import Card - Premium Glassy Dark */}
+                    <button onClick={onImportTrip} className="group relative h-64 rounded-3xl overflow-hidden shadow-xl hover:shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-2 bg-slate-900 dark:bg-slate-900 border border-slate-800 p-6 flex flex-col items-start justify-end text-white text-left">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute top-6 right-6 w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:-rotate-3 transition-transform border border-slate-700 shadow-inner">
+                            <Download size={28} className="text-emerald-400" strokeWidth={2.5} />
+                        </div>
+                        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                        <h3 className="text-3xl font-black text-slate-100 z-10 leading-none mb-1">Import<br/>Trip</h3>
+                        <p className="text-sm font-medium text-slate-400 z-10">Use a friend's share code</p>
+                    </button>
+
+                    {/* Existing Trip Cards */}
+                    {filteredTrips.map(trip => (
+                        <button key={trip.id} onClick={() => onSelectTrip(trip.id)} className="relative group text-left h-64 rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 ring-1 ring-slate-200 dark:ring-slate-800 hover:ring-indigo-500/50">
+                             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10" />
+                             <img src={trip.coverImage} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                              
-                             <div className="absolute top-3 right-3 z-30 opacity-100 transition-opacity flex gap-2">
-                                <div onClick={(e) => { e.stopPropagation(); onShareTrip(trip); }} className="p-2 bg-black/40 hover:bg-indigo-600 text-white backdrop-blur-md rounded-full transition-colors shadow-lg cursor-pointer md:opacity-0 md:group-hover:opacity-100" title="Share Trip">
+                             <div className="absolute top-4 right-4 z-30 flex gap-2">
+                                <div onClick={(e) => { e.stopPropagation(); onShareTrip(trip); }} className="p-2.5 bg-white/20 hover:bg-indigo-600 text-white backdrop-blur-md rounded-xl transition-colors shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0" title="Share Trip">
                                     <Share2 size={16} />
                                 </div>
-                                <div onClick={(e) => { e.stopPropagation(); onDeleteTrip(trip); }} className="p-2 bg-black/40 hover:bg-red-600 text-white backdrop-blur-md rounded-full transition-colors shadow-lg cursor-pointer md:opacity-0 md:group-hover:opacity-100" title="Delete Trip">
+                                <div onClick={(e) => { e.stopPropagation(); onDeleteTrip(trip); }} className="p-2.5 bg-white/20 hover:bg-red-600 text-white backdrop-blur-md rounded-xl transition-colors shadow-lg cursor-pointer opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0" title="Delete Trip">
                                     <Trash2 size={16} />
                                 </div>
                              </div>
                              
-                             <div className="absolute bottom-0 left-0 p-6 z-20 text-white">
-                                <h3 className="text-2xl font-black mb-1">{trip.title}</h3>
-                                <p className="text-sm opacity-90 font-medium flex items-center gap-1"><CalendarIcon size={14}/> {trip.startDate}</p>
+                             <div className="absolute bottom-0 left-0 right-0 p-6 z-20 text-white transform transition-transform group-hover:-translate-y-1">
+                                <h3 className="text-2xl font-black mb-1 leading-tight drop-shadow-md">{trip.title}</h3>
+                                <p className="text-sm font-bold text-slate-300 flex items-center gap-1.5 drop-shadow-md"><CalendarIcon size={14}/> {trip.startDate}</p>
                              </div>
                         </button>
                     ))}
-                    
-                    <button onClick={onNewTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-indigo-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 transition-all group">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                            <Plus size={24} />
+
+                    {/* No Results Placeholder */}
+                    {trips.length > 0 && filteredTrips.length === 0 && (
+                        <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/50 dark:bg-slate-900/20">
+                            <Search size={40} className="mb-3 opacity-30" />
+                            <p className="font-bold text-lg">No trips match your search.</p>
+                            <button onClick={() => setSearchQuery('')} className="text-indigo-500 mt-2 text-sm font-bold hover:underline">Clear search</button>
                         </div>
-                        <span className="font-bold">Plan New Trip</span>
-                    </button>
-                    
-                    <button onClick={onImportTrip} className="flex flex-col items-center justify-center h-48 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-all group">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                            <Download size={24} />
-                        </div>
-                        <span className="font-bold">Import Trip</span>
-                    </button>
+                    )}
                  </div>
             </main>
         </div>
@@ -1547,6 +1727,7 @@ export default function TravelApp() {
     const dayRefs = useRef([]);
     const [confirmConfig, setConfirmConfig] = useState(null);
     const [tripToShare, setTripToShare] = useState(null);
+    const [viewingAttachment, setViewingAttachment] = useState(null);
 
     const requestConfirm = (title, message, onConfirm) => {
         setConfirmConfig({ title, message, onConfirm });
@@ -1625,6 +1806,11 @@ export default function TravelApp() {
     }, []);
 
     useEffect(() => { 
+        if (isDarkMode) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
         localStorage.setItem('theme', isDarkMode ? 'dark' : 'light'); 
     }, [isDarkMode]);
     
@@ -1927,6 +2113,25 @@ export default function TravelApp() {
         alert("Route optimized based on time!");
     };
 
+    const handleActivityAttachmentUpload = async (dayIdx, actId, e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        if (!file.type.startsWith('image/')) {
+            alert("Please upload an image file (e.g., a screenshot of your PDF/booking).");
+            e.target.value = null;
+            return;
+        }
+        try {
+            // Compress heavily to keep the document size small and fast
+            const compressed = await compressImage(file, 800, 0.6);
+            handleUpdateActivity(dayIdx, actId, 'attachment', compressed);
+        } catch(err) {
+            console.error("Image compression failed", err);
+            alert("Failed to process image.");
+        }
+        e.target.value = null;
+    };
+
     if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" /></div>;
     if (!user) return <LoginPage onLogin={setUser} />;
     
@@ -1942,20 +2147,22 @@ export default function TravelApp() {
                     userEmail={user.email} 
                     onDeleteTrip={setTripToDelete} 
                     onShareTrip={(trip) => { setTripToShare(trip); executeShareTrip(trip); }}
+                    isDarkMode={isDarkMode}
+                    onToggleTheme={() => setIsDarkMode(!isDarkMode)}
                 />
                 <Modal isOpen={showSignOutConfirm} onClose={() => setShowSignOutConfirm(false)} title="Sign Out">
                     <div className="space-y-4">
                         <p className="text-slate-600 dark:text-slate-300">Are you sure you want to sign out?</p>
                         <div className="flex gap-3 justify-end">
-                            <button onClick={() => setShowSignOutConfirm(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold">Cancel</button>
-                            <button onClick={handleSignOut} className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold">Sign Out</button>
+                            <button onClick={() => setShowSignOutConfirm(false)} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancel</button>
+                            <button onClick={handleSignOut} className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30">Sign Out</button>
                         </div>
                     </div>
                 </Modal>
                 <Modal isOpen={modalOpen === 'import'} onClose={() => setModalOpen(null)} title="Import Trip">
                     <div className="space-y-6">
                         <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-center">
-                            <div className="mx-auto w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-3">
+                            <div className="mx-auto w-12 h-12 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-3">
                                 <Download size={24} />
                             </div>
                             <h4 className="font-bold dark:text-white">Import a Friend's Trip</h4>
@@ -1969,7 +2176,7 @@ export default function TravelApp() {
                                     name="shareId" 
                                     defaultValue={window.localStorage.getItem('pendingShareId') || ''}
                                     placeholder="e.g. A7B2X9" 
-                                    className="flex-grow bg-white dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" 
+                                    className="flex-grow bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case focus:border-emerald-500 dark:text-white" 
                                     required 
                                     maxLength={6} 
                                 />
@@ -2054,7 +2261,7 @@ export default function TravelApp() {
     const dayRouteUrl = getGoogleMapsDirectionsUrl(activeDay.activities);
 
     return (
-        <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-32 overflow-x-hidden`}>
+        <div className="min-h-screen transition-colors duration-500 bg-zinc-100 dark:bg-slate-950 text-zinc-900 dark:text-slate-100 font-sans pb-32 overflow-x-hidden">
             <div className="relative h-[40vh] md:h-[50vh] w-full group">
                 <div className="absolute inset-0 overflow-hidden rounded-b-3xl">
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
@@ -2385,14 +2592,37 @@ export default function TravelApp() {
                                                         </summary>
                                                         <div className="pt-3 text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">
                                                             {isEditMode ? (
-                                                                <textarea 
-                                                                    value={act.details} 
-                                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)} 
-                                                                    className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-y" 
-                                                                    placeholder="Add detailed notes, links, or reservations here..."
-                                                                />
+                                                                <div className="space-y-3">
+                                                                    <textarea 
+                                                                        value={act.details} 
+                                                                        onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)} 
+                                                                        className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-y" 
+                                                                        placeholder="Add detailed notes, links, or reservations here..."
+                                                                    />
+                                                                    <div className="flex flex-wrap items-center gap-3">
+                                                                        <label className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors text-xs font-bold text-slate-600 dark:text-slate-300">
+                                                                            <Paperclip size={14} /> {act.attachment ? 'Change Attachment' : 'Attach Booking/Image'}
+                                                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleActivityAttachmentUpload(activeDayIdx, act.id, e)} />
+                                                                        </label>
+                                                                        {act.attachment && (
+                                                                            <button onClick={(e) => { e.preventDefault(); handleUpdateActivity(activeDayIdx, act.id, 'attachment', null); }} className="text-red-500 hover:text-red-600 text-xs font-bold px-2 py-2">Remove</button>
+                                                                        )}
+                                                                    </div>
+                                                                    {act.attachment && (
+                                                                        <div className="mt-2 w-32 h-32 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                                                            <img src={act.attachment} className="w-full h-full object-cover opacity-80" alt="Attachment Preview" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             ) : (
-                                                                act.details
+                                                                <div className="space-y-3">
+                                                                    <p className="whitespace-pre-wrap">{act.details}</p>
+                                                                    {act.attachment && (
+                                                                         <button onClick={(e) => { e.preventDefault(); setViewingAttachment(act.attachment); }} className="flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors w-fit border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
+                                                                             <FileText size={14} /> View Attachment
+                                                                         </button>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </div>
                                                         {embeddedMaps[act.id] && (
@@ -2665,6 +2895,15 @@ export default function TravelApp() {
                             Save Photo
                         </button>
                     </div>
+                </div>
+            </Modal>
+            
+            <Modal isOpen={!!viewingAttachment} onClose={() => setViewingAttachment(null)} title="Attachment Preview">
+                <div className="flex flex-col items-center">
+                    <img src={viewingAttachment} alt="Attachment" className="max-w-full rounded-lg border border-slate-200 dark:border-slate-700 shadow-md max-h-[70vh] object-contain bg-slate-100 dark:bg-slate-900" />
+                    <button onClick={() => setViewingAttachment(null)} className="mt-4 w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                        Close
+                    </button>
                 </div>
             </Modal>
         </div>
