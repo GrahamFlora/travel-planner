@@ -69,7 +69,10 @@ import {
   Sparkles,
   ArrowUpDown,
   CalendarDays,
-  ArrowRight
+  ArrowRight,
+  Navigation,
+  Paperclip,
+  FileText
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -221,7 +224,7 @@ const formatCurrency = (amount, currencyCode) => {
     }).format(amount);
 };
 
-const compressImage = async (file) => {
+const compressImage = async (file, maxWidth = 150, quality = 0.7) => {
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -230,13 +233,19 @@ const compressImage = async (file) => {
             img.src = event.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 150; 
-                const scaleSize = MAX_WIDTH / img.width;
-                canvas.width = MAX_WIDTH;
-                canvas.height = img.height * scaleSize;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth) {
+                    height = height * (maxWidth / width);
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
             };
         };
     });
@@ -303,17 +312,18 @@ const createUTCDate = (dateStr) => {
 const NavButton = ({ icon: Icon, label, active, onClick }) => (
     <button 
         onClick={onClick}
-        className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-300 ${active ? 'text-indigo-600 dark:text-indigo-400 scale-105' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+        className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-300 relative ${active ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
     >
-        <div className={`p-1.5 rounded-xl transition-all ${active ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'bg-transparent'}`}>
-            <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+        <div className={`p-2 rounded-2xl transition-all duration-300 ${active ? 'bg-indigo-100 dark:bg-indigo-900/40 shadow-sm scale-110 -translate-y-1' : 'bg-transparent'}`}>
+            <Icon size={24} strokeWidth={active ? 2.5 : 2} />
         </div>
-        <span className={`text-[10px] font-bold mt-1 ${active ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+        <span className={`text-[10px] font-bold mt-1 transition-all duration-300 ${active ? 'opacity-100 -translate-y-0.5' : 'opacity-70'}`}>{label}</span>
     </button>
 );
 
+// --- REVAMPED FLOATING FOOTER ---
 const BottomNav = ({ viewMode, setViewMode }) => (
-  <div className="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 px-2 pb-safe pt-2 z-50 flex justify-around items-center shadow-2xl safe-area-bottom">
+  <div className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-3xl z-50 flex justify-around items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] px-2 py-1 safe-area-bottom ring-1 ring-slate-900/5 dark:ring-white/10">
      <NavButton icon={LayoutList} label="Itinerary" active={viewMode === 'timeline'} onClick={() => setViewMode('timeline')} />
      <NavButton icon={CalendarIcon} label="Calendar" active={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} />
      <NavButton icon={DollarSign} label="Budget" active={viewMode === 'budget'} onClick={() => setViewMode('budget')} />
@@ -553,7 +563,6 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
 const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
     const realWeather = weatherData[date];
     const todayStr = new Date().toISOString().split('T')[0];
-    // --- UPDATED LOGIC: Only show Est. if date is strictly in the future ---
     const isFuture = date > todayStr;
     
     let Icon = Sun;
@@ -583,7 +592,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className={`bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full ${maxWidth} overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200`}>
+      <div className={`bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full ${maxWidth} overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200`}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
           <h3 className="font-bold text-lg text-slate-900 dark:text-white">{title}</h3>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-slate-600">
@@ -596,12 +605,11 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
   );
 };
 
-// --- NEW: GENERIC CONFIRMATION MODAL ---
 const ConfirmationModal = ({ config, onClose }) => {
     if (!config) return null;
     return (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 border border-slate-200 dark:border-slate-700 animate-in zoom-in-95">
+             <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6 border border-slate-200 dark:border-slate-700 animate-in zoom-in-95">
                  <div className="flex items-center gap-4 mb-4 text-red-600 dark:text-red-400">
                      <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
                          <AlertTriangle size={28} />
@@ -624,7 +632,7 @@ const ConfirmationModal = ({ config, onClose }) => {
     );
 };
 
-const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, targetCurrency }) => {
+const ExpenseCard = ({ expense, onDelete, onEdit, onViewReceipt, isEditMode, currencyOptions, targetCurrency }) => {
     const inputCurrencyCode = expense.inputCurrencyCode || BASE_CURRENCY;
     const amountInput = expense.amountInput !== undefined ? expense.amountInput : expense.amount;
     const inputCurrencyObj = currencyOptions.find(c => c.code === inputCurrencyCode) || { symbol: '', code: inputCurrencyCode };
@@ -639,6 +647,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, t
     
     const showConversion = inputCurrencyCode !== targetCurrency;
     const targetCurrencyObj = currencyOptions.find(c => c.code === targetCurrency) || { symbol: targetCurrency };
+    const targetSymbol = targetCurrencyObj.symbol;
 
     return (
         <div className={`bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex justify-between items-center transition-all hover:shadow-md`}>
@@ -646,9 +655,17 @@ const ExpenseCard = ({ expense, onDelete, onEdit, isEditMode, currencyOptions, t
                 <div className={`p-2 rounded-full flex-shrink-0 ${isEditMode ? 'bg-red-50 text-red-500' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'}`}>
                     <Icon size={18} />
                 </div>
-                <div className="min-w-0">
-                    <p className="font-bold text-slate-900 dark:text-white text-sm md:text-base truncate pr-2">{expense.name}</p>
-                    <p className="text-xs text-slate-500 capitalize">{catObj.label} {expense.date && `• ${new Date(expense.date).toLocaleDateString()}`}</p>
+                <div className="min-w-0 flex flex-col items-start">
+                    <p className="font-bold text-slate-900 dark:text-white text-sm md:text-base truncate pr-2 w-full">{expense.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-slate-500 capitalize">{catObj.label}</span>
+                        {expense.date && <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">{new Date(expense.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                        {expense.receipt && (
+                            <button onClick={(e) => { e.stopPropagation(); onViewReceipt(expense.receipt); }} className="text-indigo-500 hover:text-indigo-600 flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded transition-colors">
+                                <FileText size={10} /> Receipt
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
             <div className="text-right flex items-center space-x-3 flex-shrink-0">
@@ -686,6 +703,8 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
     const [category, setCategory] = useState('food');
     const [inputCurrencyCode, setInputCurrencyCode] = useState(BASE_CURRENCY);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [receiptImage, setReceiptImage] = useState(null); 
+    const [isCompressing, setIsCompressing] = useState(false);
 
     useEffect(() => {
         if (initialData) {
@@ -694,6 +713,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             setCategory(initialData.category || 'food');
             setInputCurrencyCode(initialData.inputCurrencyCode || BASE_CURRENCY);
             setDate(initialData.date || new Date().toISOString().split('T')[0]);
+            setReceiptImage(initialData.receipt || null);
         }
     }, [initialData]);
 
@@ -701,6 +721,21 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
     const inputRate = EXCHANGE_RATES[inputCurrencyCode] || 1;
     const convertedValue = amountInput ? (Number(amountInput) / inputRate * targetRate) : 0;
     const targetSymbol = currencyOptions.find(c => c.code === targetCurrency)?.symbol || targetCurrency;
+
+    const handleReceiptUpload = async (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        setIsCompressing(true);
+        try {
+            // Compress to max 600px width for receipts to keep storage usage low
+            const compressed = await compressImage(file, 600, 0.6);
+            setReceiptImage(compressed);
+        } catch(err) {
+            console.error("Image compression failed", err);
+        } finally {
+            setIsCompressing(false);
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -714,9 +749,10 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
             inputCurrencyCode, 
             category, 
             type: 'expense', 
-            date 
+            date,
+            receipt: receiptImage
         });
-        if (!initialData) { setName(''); setAmountInput(''); }
+        if (!initialData) { setName(''); setAmountInput(''); setReceiptImage(null); }
     };
     
     const inputCurrencySymbol = currencyOptions.find(c => c.code === inputCurrencyCode)?.symbol || '';
@@ -735,7 +771,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                     value={name} 
                     onChange={(e) => setName(e.target.value)} 
                     className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" 
-                    placeholder="e.g. Dinner" 
+                    placeholder="e.g. Dinner at Tokyo Tower" 
                     required
                 />
             </div>
@@ -773,14 +809,38 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
                 </div>
             </div>
             
-            <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Date</label>
-                <input 
-                    type="date" 
-                    value={date} 
-                    onChange={(e) => setDate(e.target.value)} 
-                    className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white"
-                />
+            <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Date</label>
+                    <input 
+                        type="date" 
+                        value={date} 
+                        onChange={(e) => setDate(e.target.value)} 
+                        className="w-full bg-slate-100 dark:bg-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-sm"
+                    />
+                </div>
+                
+                <div className="space-y-1">
+                     <label className="text-xs font-bold text-slate-500 uppercase">Receipt</label>
+                     <label className="w-full h-11 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl flex items-center justify-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group relative overflow-hidden">
+                         {isCompressing ? (
+                             <Loader2 size={16} className="text-indigo-500 animate-spin" />
+                         ) : receiptImage ? (
+                             <div className="w-full h-full relative">
+                                <img src={receiptImage} alt="Receipt Preview" className="w-full h-full object-cover opacity-50" />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Check size={16} className="text-emerald-500 drop-shadow-md" strokeWidth={3} />
+                                </div>
+                             </div>
+                         ) : (
+                             <div className="flex items-center gap-2 text-slate-400 group-hover:text-indigo-500">
+                                 <Paperclip size={16} /> <span className="text-xs font-bold">Attach</span>
+                             </div>
+                         )}
+                         <input type="file" accept="image/*" className="hidden" onChange={handleReceiptUpload}/>
+                     </label>
+                     {receiptImage && <button type="button" onClick={() => setReceiptImage(null)} className="text-[10px] text-red-500 font-bold block w-full text-right mt-1">Remove</button>}
+                </div>
             </div>
             
             <div className="space-y-2">
@@ -801,7 +861,7 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
 // --- VIEW COMPONENTS ---
 
 const CalendarView = ({ trip, onSelectDay }) => {
-    const [selectedDayDetails, setSelectedDayDetails] = useState(null); // NEW: State for mobile popup
+    const [selectedDayDetails, setSelectedDayDetails] = useState(null); 
     const startDate = new Date(trip.startDate);
     const year = startDate.getFullYear();
     const month = startDate.getMonth();
@@ -816,7 +876,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
     trip.days.forEach((d, idx) => { tripDayMap[d.date] = { ...d, idx }; });
 
     return (
-        <main className="max-w-6xl mx-auto mt-6 px-4 pb-24 space-y-6 animate-in fade-in">
+        <main className="max-w-6xl mx-auto mt-6 px-4 pb-32 space-y-6 animate-in fade-in">
              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white">
@@ -876,7 +936,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
                     </div>
                 </div>
 
-                {/* MOBILE LIST VIEW (With Popup Interaction) */}
+                {/* MOBILE LIST VIEW */}
                 <div className="md:hidden space-y-4">
                     {days.filter(d => d).map((date, i) => {
                         const dateStr = date.toISOString().split('T')[0];
@@ -885,7 +945,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
                         return (
                             <div 
                                 key={dateStr} 
-                                onClick={() => setSelectedDayDetails(tripDay)} // NEW: Opens modal first
+                                onClick={() => setSelectedDayDetails(tripDay)} 
                                 className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200 dark:border-slate-700 cursor-pointer active:scale-95 transition-transform"
                             >
                                 <div className="flex items-center gap-3 mb-3">
@@ -923,7 +983,6 @@ const CalendarView = ({ trip, onSelectDay }) => {
                 </div>
              </div>
 
-             {/* NEW: MOBILE DAY DETAILS POPUP */}
              <Modal isOpen={!!selectedDayDetails} onClose={() => setSelectedDayDetails(null)} title={selectedDayDetails?.title || 'Day Details'}>
                  <div className="space-y-6">
                      <div className="text-center">
@@ -975,18 +1034,10 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     
     const checklist = trip.checklist || [];
     
-    // Sort & Group Logic
     const sortedList = useMemo(() => {
         let list = [...checklist];
-        
-        if (sortBy === 'status') {
-            return list.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1));
-        } 
-        if (sortBy === 'alpha') {
-            return list.sort((a, b) => a.text.localeCompare(b.text));
-        }
-        
-        // Default: 'grouped' 
+        if (sortBy === 'status') { return list.sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1)); } 
+        if (sortBy === 'alpha') { return list.sort((a, b) => a.text.localeCompare(b.text)); }
         return list.sort((a, b) => b.createdAt - a.createdAt);
     }, [checklist, sortBy]);
     
@@ -1027,14 +1078,10 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     };
     
     const handleDeleteItem = (itemId) => {
-        requestConfirm(
-            "Delete Item", 
-            "Are you sure you want to remove this item from your list?", 
-            () => {
-                const updatedList = checklist.filter(item => item.id !== itemId);
-                updateTrip({ checklist: updatedList });
-            }
-        );
+        requestConfirm("Delete Item", "Remove this item from your list?", () => {
+            const updatedList = checklist.filter(item => item.id !== itemId);
+            updateTrip({ checklist: updatedList });
+        });
     };
     
     const renderItem = (item) => (
@@ -1049,7 +1096,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                 }
             `}
         >
-            {/* Checkbox Area */}
             <div className={`
                 mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors
                 ${item.completed ? 'bg-indigo-500 border-indigo-500' : 'border-slate-300 dark:border-slate-600'}
@@ -1057,13 +1103,10 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                 {item.completed && <Check size={12} className="text-white" strokeWidth={3} />}
             </div>
             
-            {/* Content Area */}
             <div className="flex-grow min-w-0">
                 <p className={`text-sm font-medium leading-tight break-words ${item.completed ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
                     {item.text}
                 </p>
-                
-                {/* Context Tag (Day) - Only if not grouped by day already to avoid redundancy, or if needed */}
                 {sortBy !== 'grouped' && item.dayId && item.dayId !== 'general' && (
                      <div className="flex items-center gap-1 mt-1.5">
                         <span className="text-[10px] font-bold px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded">
@@ -1073,7 +1116,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                 )}
             </div>
             
-            {/* Delete Action - Always visible on mobile, subtle */}
             <button 
                 onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
                 className="p-2 -mr-2 -mt-2 text-slate-300 hover:text-red-500 transition-colors"
@@ -1085,11 +1127,8 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     );
 
     return (
-        <main className="max-w-xl mx-auto mt-4 px-4 pb-24 animate-in fade-in"> 
-             {/* Reduced max-w to xl for better focus on mobile/tablet */}
+        <main className="max-w-xl mx-auto mt-4 px-4 pb-32 animate-in fade-in"> 
              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-                
-                {/* Compact Header */}
                 <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex justify-between items-center mb-4">
                         <div>
@@ -1101,8 +1140,6 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                                 {checklist.length} items • {Math.round(progress)}% done
                             </p>
                         </div>
-                        
-                         {/* Controls */}
                          <div className="flex items-center gap-2">
                              <div className="relative">
                                  <button 
@@ -1122,10 +1159,8 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                          </div>
                     </div>
                     
-                    {/* Input Area - Optimized for Mobile */}
                     <form onSubmit={handleAddItem} className="flex gap-2">
-                         {/* Day Selector - Minimalist */}
-                         <div className="relative">
+                         <div className="relative flex-shrink-0">
                              <select 
                                 value={targetDayId}
                                 onChange={(e) => setTargetDayId(e.target.value)}
@@ -1151,14 +1186,13 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                          <button 
                             type="submit" 
                             disabled={!newItemText.trim()}
-                            className="h-12 w-12 bg-indigo-600 text-white rounded-lg flex items-center justify-center shadow-sm disabled:opacity-50 disabled:bg-slate-300"
+                            className="h-12 w-12 bg-indigo-600 text-white rounded-lg flex items-center justify-center shadow-sm disabled:opacity-50 disabled:bg-slate-300 flex-shrink-0"
                          >
                              <Plus size={18} strokeWidth={3} />
                          </button>
                     </form>
                 </div>
 
-                {/* List Content */}
                 <div className="p-3 bg-slate-50 dark:bg-black/20 min-h-[300px]">
                      {checklist.length === 0 ? (
                          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
@@ -1210,6 +1244,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     const [editingExpense, setEditingExpense] = useState(null); 
     const [sortBy, setSortBy] = useState('date');
     const [isSortOpen, setIsSortOpen] = useState(false);
+    const [viewingReceipt, setViewingReceipt] = useState(null);
 
     useEffect(() => {
         if(!currentUser) return;
@@ -1237,10 +1272,19 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
         } else { 
             updated = [...expenses, expenseWithId]; 
         }
+        
+        const prevExpenses = expenses;
         setExpenses(updated); 
         setIsAddModalOpen(false); 
         setEditingExpense(null);
-        await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); 
+        
+        try {
+            await setDoc(getUserBudgetRef(currentUser.uid), { expenses: updated }, { merge: true }); 
+        } catch (err) {
+            console.error("Save error:", err);
+            alert("Failed to save expense. The receipt image might be too large.");
+            setExpenses(prevExpenses);
+        }
     };
 
     const handleDelete = async (id) => { 
@@ -1295,7 +1339,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     const sortedDates = Object.keys(expensesByDate).sort();
 
     return (
-        <main className="max-w-2xl mx-auto mt-6 px-4 pb-24 space-y-6 animate-in fade-in">
+        <main className="max-w-2xl mx-auto mt-6 px-4 pb-32 space-y-6 animate-in fade-in">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative">
                 <div className="relative z-10">
                     <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
@@ -1352,6 +1396,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
                                                 expense={e} 
                                                 onDelete={handleDelete} 
                                                 onEdit={handleEditStart} 
+                                                onViewReceipt={setViewingReceipt}
                                                 isEditMode={isEditMode} 
                                                 currencyOptions={CURRENCY_OPTIONS}
                                                 targetCurrency={targetCurrency}
@@ -1369,6 +1414,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
                                     expense={e} 
                                     onDelete={handleDelete} 
                                     onEdit={handleEditStart} 
+                                    onViewReceipt={setViewingReceipt}
                                     isEditMode={isEditMode} 
                                     currencyOptions={CURRENCY_OPTIONS}
                                     targetCurrency={targetCurrency}
@@ -1378,6 +1424,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
                     )
                 )}
             </div>
+
             <Modal isOpen={isAddModalOpen} onClose={handleCloseModal} title={editingExpense ? "Edit Expense" : "New Expense"}>
                 <AddExpenseForm 
                     onAddExpense={handleSaveExpense} 
@@ -1385,14 +1432,23 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
                     convertToBase={convertToBase} 
                     initialData={editingExpense} 
                     targetCurrency={targetCurrency} 
+                    onCancel={handleCloseModal}
                 />
+            </Modal>
+            
+            <Modal isOpen={!!viewingReceipt} onClose={() => setViewingReceipt(null)} title="Receipt Preview">
+                <div className="flex flex-col items-center">
+                    <img src={viewingReceipt} alt="Receipt" className="max-w-full rounded-lg border border-slate-200 dark:border-slate-700 shadow-md max-h-[70vh] object-contain" />
+                    <button onClick={() => setViewingReceipt(null)} className="mt-4 w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                        Close
+                    </button>
+                </div>
             </Modal>
         </main>
     );
 };
 
-// ... existing DashboardView ...
-const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip }) => {
+const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip, onShareTrip }) => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 overflow-x-hidden">
             <main className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
@@ -1411,13 +1467,16 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
                     </div>
                  </div>
                  
-                 <div className="grid md:grid-cols-2 gap-6">
+                 <div className="grid md:grid-cols-2 gap-6 pb-12">
                     {trips.map(trip => (
                         <button key={trip.id} onClick={() => onSelectTrip(trip.id)} className="relative group text-left h-48 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all hover:-translate-y-1">
                              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors z-10" />
                              <img src={trip.coverImage} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                              
-                             <div className="absolute top-3 right-3 z-30 opacity-100 transition-opacity">
+                             <div className="absolute top-3 right-3 z-30 opacity-100 transition-opacity flex gap-2">
+                                <div onClick={(e) => { e.stopPropagation(); onShareTrip(trip); }} className="p-2 bg-black/40 hover:bg-indigo-600 text-white backdrop-blur-md rounded-full transition-colors shadow-lg cursor-pointer md:opacity-0 md:group-hover:opacity-100" title="Share Trip">
+                                    <Share2 size={16} />
+                                </div>
                                 <div onClick={(e) => { e.stopPropagation(); onDeleteTrip(trip); }} className="p-2 bg-black/40 hover:bg-red-600 text-white backdrop-blur-md rounded-full transition-colors shadow-lg cursor-pointer md:opacity-0 md:group-hover:opacity-100" title="Delete Trip">
                                     <Trash2 size={16} />
                                 </div>
@@ -1487,12 +1546,12 @@ export default function TravelApp() {
     const [newCompanionPhoto, setNewCompanionPhoto] = useState(null);
     const dayRefs = useRef([]);
     const [confirmConfig, setConfirmConfig] = useState(null);
+    const [tripToShare, setTripToShare] = useState(null);
 
     const requestConfirm = (title, message, onConfirm) => {
         setConfirmConfig({ title, message, onConfirm });
     };
 
-    // --- URL PARAM LISTENER FOR DIRECT SHARING ---
     useEffect(() => {
         const checkShareParams = async () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -1512,7 +1571,6 @@ export default function TravelApp() {
         checkShareParams();
     }, [user]);
 
-    // Handle Pending Share ID after login
     useEffect(() => {
         if (user && isDataLoaded) {
             const pending = window.localStorage.getItem('pendingShareId');
@@ -1637,7 +1695,6 @@ export default function TravelApp() {
         setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); 
     };
     
-    // --- NEW: Global Optimize Function ---
     const handleGlobalOptimize = () => {
         const newDays = trip.days.map(day => {
              const sortedActivities = [...day.activities].sort((a, b) => {
@@ -1705,7 +1762,7 @@ export default function TravelApp() {
             lon: 114.1694, 
             currency: 'USD', 
             days: [{ id: 'd1', date: new Date().toISOString().split('T')[0], title: 'Day 1', activities: [] }],
-            checklist: [] // Init checklist
+            checklist: [] 
         };
         setTrips(prev => [...prev, newTrip]);
     };
@@ -1753,21 +1810,20 @@ export default function TravelApp() {
         } 
     };
     
-    const handleShareTrip = async () => {
-        if (!trip) return;
+    const executeShareTrip = async (tripToProcess) => {
+        if (!tripToProcess) return;
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
         try { 
             const budgetSnap = await getDoc(getUserBudgetRef(user.uid));
             let sharedExpenses = [];
-            
             if (budgetSnap.exists()) {
                 const allExpenses = budgetSnap.data().expenses || [];
-                sharedExpenses = allExpenses.filter(e => e.tripId === trip.id || (!e.tripId && trips.length === 1));
+                sharedExpenses = allExpenses.filter(e => e.tripId === tripToProcess.id || (!e.tripId && trips.length === 1));
             }
-            
-            const cleanTrip = JSON.parse(JSON.stringify({ ...trip, sharedExpenses })); 
+            const cleanTrip = JSON.parse(JSON.stringify({ ...tripToProcess, sharedExpenses })); 
             await setDoc(getSharedTripRef(code), cleanTrip); 
             setSharedCode(code); 
+            setModalOpen('share_success');
         } catch (error) { 
             console.error("Share Error:", error); 
             alert(`Error: ${error.message}`); 
@@ -1885,6 +1941,7 @@ export default function TravelApp() {
                     onImportTrip={() => setModalOpen('import')} 
                     userEmail={user.email} 
                     onDeleteTrip={setTripToDelete} 
+                    onShareTrip={(trip) => { setTripToShare(trip); executeShareTrip(trip); }}
                 />
                 <Modal isOpen={showSignOutConfirm} onClose={() => setShowSignOutConfirm(false)} title="Sign Out">
                     <div className="space-y-4">
@@ -1941,14 +1998,63 @@ export default function TravelApp() {
                         </div>
                     </div>
                 </Modal>
+                <Modal isOpen={modalOpen === 'share_success'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Trip Shared!">
+                    <div className="space-y-6">
+                        <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
+                            <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
+                                <Check size={32} />
+                            </div>
+                            <div>
+                                <h4 className="font-black text-xl text-slate-900 dark:text-white mb-1">Trip Published!</h4>
+                                <p className="text-sm text-slate-500">Share this code with friends:</p>
+                            </div>
+                            <div className="flex items-center gap-2 justify-center">
+                                <code className="text-3xl font-mono font-black tracking-widest text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-800">
+                                    {sharedCode}
+                                </code>
+                                <button onClick={() => copyToClipboard(sharedCode, () => alert("Code copied!"))} className="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl transition-colors">
+                                    <Copy size={20} />
+                                </button>
+                            </div>
+
+                            <div className="pt-2">
+                                <p className="text-xs text-slate-500 mb-2 font-medium">OR Share direct link (No Login Required)</p>
+                                <button 
+                                    onClick={() => {
+                                        const url = `${window.location.origin}${window.location.pathname}?shareId=${sharedCode}`;
+                                        copyToClipboard(url, () => alert("Link Copied! Friends can view without logging in."));
+                                    }}
+                                    className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                >
+                                    <LinkIcon size={16} /> Copy Instant Access Link
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
             </>
         );
     }
 
     const activeDay = trip.days[activeDayIdx] || trip.days[0];
+    
+    // Day Map Route Link Generation
+    const getGoogleMapsDirectionsUrl = (activities) => {
+        const validActivities = activities.filter(a => a.title && a.title.trim() !== '' && a.title !== 'New Activity');
+        if (validActivities.length === 0) return null;
+        if (validActivities.length === 1) {
+            return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(validActivities[0].title + " " + (trip.weatherLocation || ''))}`;
+        }
+        const origin = encodeURIComponent(validActivities[0].title + " " + (trip.weatherLocation || ''));
+        const dest = encodeURIComponent(validActivities[validActivities.length - 1].title + " " + (trip.weatherLocation || ''));
+        const waypoints = validActivities.slice(1, -1).map(a => encodeURIComponent(a.title + " " + (trip.weatherLocation || ''))).join('|');
+        return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}${waypoints ? '&waypoints='+waypoints : ''}`;
+    };
+    
+    const dayRouteUrl = getGoogleMapsDirectionsUrl(activeDay.activities);
 
     return (
-        <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-24 overflow-x-hidden`}>
+        <div className={`min-h-screen transition-colors duration-500 ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-zinc-100 text-zinc-900'} font-sans pb-32 overflow-x-hidden`}>
             <div className="relative h-[40vh] md:h-[50vh] w-full group">
                 <div className="absolute inset-0 overflow-hidden rounded-b-3xl">
                     <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
@@ -1992,7 +2098,7 @@ export default function TravelApp() {
                                         </div>
                                         <span className="text-[10px] font-bold text-slate-500 truncate w-full">{user.email}</span>
                                      </div>
-                                     <button onClick={() => { setModalOpen('share'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Share2 size={16} /> Share Trip</button>
+                                     <button onClick={() => { executeShareTrip(trip); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Share2 size={16} /> Share Trip</button>
                                      <button onClick={() => { setModalOpen('rates'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Banknote size={16} /> Exchange Rates</button>
                                      <button onClick={() => { setModalOpen('settings'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Settings size={16} /> Trip Settings</button>
                                      <button onClick={() => { setShowSignOutConfirm(true); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-red-500 text-sm font-medium"><LogOut size={16} /> Sign Out</button>
@@ -2047,7 +2153,6 @@ export default function TravelApp() {
                 </div>
             </div>
 
-            {/* --- NEW BOTTOM NAVIGATION --- */}
             <BottomNav viewMode={viewMode} setViewMode={setViewMode} />
             <ConfirmationModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
 
@@ -2058,7 +2163,7 @@ export default function TravelApp() {
             {viewMode === 'checklist' && (<ChecklistView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} requestConfirm={requestConfirm} />)}
             
             {viewMode === 'timeline' && (
-                <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30">
+                <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30 pb-20">
                     <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-20 z-40 mt-8">
                         {trip.days.map((day, idx) => (
                             <div key={day.id} ref={el => dayRefs.current[idx] = el} className="relative group/day">
@@ -2112,18 +2217,44 @@ export default function TravelApp() {
                                 )}
                             </div>
                             
+                            {/* --- REVAMPED ROUTE MAP --- */}
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50 overflow-hidden">
                                 <button onClick={() => setIsMapOpen(!isMapOpen)} className="w-full p-4 flex items-center justify-between font-bold text-indigo-900 dark:text-indigo-100 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 transition-colors">
-                                    <span className="flex items-center gap-2"><Map size={18} /> Day Map</span>
+                                    <span className="flex items-center gap-2"><Map size={18} /> Itinerary Route</span>
                                     <ChevronDown size={18} className={`transition-transform duration-300 ${isMapOpen ? 'rotate-180' : ''}`} />
                                 </button>
-                                <div className={`transition-all duration-500 ease-in-out ${isMapOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                    <div className="p-4 pt-0">
-                                        <div className="aspect-video bg-slate-200 rounded-lg overflow-hidden relative shadow-inner">
-                                            {isMapOpen && (
-                                                <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(activeDay.title + " Hong Kong")}&t=&z=11&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
-                                            )}
+                                <div className={`transition-all duration-500 ease-in-out ${isMapOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    <div className="p-4 pt-0 space-y-4">
+                                        <div className="bg-white dark:bg-slate-800 rounded-xl p-3 shadow-inner border border-slate-100 dark:border-slate-700 max-h-48 overflow-y-auto custom-scrollbar">
+                                            {activeDay.activities.filter(a=>a.title).map((act, index, arr) => (
+                                                <div key={act.id} className="flex items-start gap-3 relative pb-4 last:pb-0">
+                                                    {index !== arr.length - 1 && <div className="absolute left-2.5 top-5 bottom-0 w-0.5 bg-indigo-200 dark:bg-indigo-800/50"></div>}
+                                                    <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-2 border-indigo-500 flex items-center justify-center flex-shrink-0 z-10 mt-0.5">
+                                                        <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300">{index + 1}</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{act.title}</p>
+                                                        <p className="text-[10px] text-slate-500">{act.time}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {activeDay.activities.length === 0 && <p className="text-xs text-slate-400 italic">Add activities to generate a route.</p>}
                                         </div>
+                                        
+                                        {dayRouteUrl ? (
+                                             <a 
+                                                href={dayRouteUrl} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/30 active:scale-95 block text-center text-sm"
+                                            >
+                                                <Navigation size={16} /> Open Route in Google Maps
+                                            </a>
+                                        ) : (
+                                            <div className="w-full py-3 bg-slate-200 dark:bg-slate-700 text-slate-400 font-bold rounded-xl text-center text-sm">
+                                                No locations to route
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -2135,15 +2266,10 @@ export default function TravelApp() {
                             )}
                         </div>
 
-                        {/* TIMELINE CONTAINER with increased left margin for mobile alignment */}
-                        <div className="relative border-l-2 border-slate-300 dark:border-slate-700 ml-6 md:ml-40 space-y-8 pl-8 md:pl-10 pb-4">
+                        <div className="space-y-6">
                              {activeDay.activities.map((act, idx) => (
                                 <div key={act.id} className={`relative group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-                                    
-                                    {/* TIMELINE DOT */}
-                                    <div className="absolute top-6 -left-[2.5rem] md:-left-[2.1rem] w-4 h-4 rounded-full bg-indigo-500 ring-4 ring-zinc-100 dark:ring-slate-950 z-10 shadow-sm"></div>
-                                    
-                                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300 w-full">
+                                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300 w-full">
                                         <div className="flex flex-col sm:flex-row h-full">
                                             <div className="relative w-full h-48 sm:w-48 sm:h-auto flex-shrink-0 bg-slate-200 group/img">
                                                 <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
@@ -2167,7 +2293,7 @@ export default function TravelApp() {
                                                 )}
                                             </div>
                                             
-                                            <div className="p-4 flex flex-col flex-grow relative min-w-0">
+                                            <div className="p-4 md:p-5 flex flex-col flex-grow relative min-w-0">
                                                 <div className="absolute top-4 right-4 z-10 flex gap-2">
                                                     {!isEditMode && (
                                                         <button 
@@ -2188,7 +2314,7 @@ export default function TravelApp() {
                                                     )}
                                                 </div>
                                                 
-                                                <div className="flex-grow space-y-2 pr-6 md:pr-10">
+                                                <div className="flex-grow space-y-2 pr-12 md:pr-16">
                                                     <div className="mb-2">
                                                         {isEditMode ? (
                                                             <select 
@@ -2222,8 +2348,8 @@ export default function TravelApp() {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <h3 className="font-bold text-lg text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-600 transition-colors truncate">{act.title}</h3>
-                                                            <p className="text-xs text-zinc-500 dark:text-slate-400 line-clamp-2">{act.desc}</p>
+                                                            <h3 className="font-bold text-lg md:text-xl text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-600 transition-colors truncate">{act.title}</h3>
+                                                            <p className="text-sm text-zinc-500 dark:text-slate-400 line-clamp-2">{act.desc}</p>
                                                         </>
                                                     )}
                                                 </div>
@@ -2253,16 +2379,16 @@ export default function TravelApp() {
                                                                         />
                                                                     </div>
                                                                 ) : (
-                                                                    <span>{act.currency || '$'} {act.cost || 0}</span>
+                                                                    <span className="bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded">{act.currency || '$'} {act.cost || 0}</span>
                                                                 )}
                                                             </div>
                                                         </summary>
-                                                        <div className="pt-2 text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">
+                                                        <div className="pt-3 text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">
                                                             {isEditMode ? (
                                                                 <textarea 
                                                                     value={act.details} 
                                                                     onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)} 
-                                                                    className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-xs focus:ring-2 focus:ring-indigo-500 outline-none resize-y" 
+                                                                    className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-y" 
                                                                     placeholder="Add detailed notes, links, or reservations here..."
                                                                 />
                                                             ) : (
@@ -2270,8 +2396,8 @@ export default function TravelApp() {
                                                             )}
                                                         </div>
                                                         {embeddedMaps[act.id] && (
-                                                            <div className="h-48 mt-3 rounded-lg overflow-hidden bg-slate-100 w-full relative z-20">
-                                                                <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(act.title)}&t=&z=15&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
+                                                            <div className="h-48 mt-3 rounded-xl overflow-hidden bg-slate-100 w-full relative z-20 border border-slate-200 dark:border-slate-700 shadow-inner">
+                                                                <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(act.title + " " + (trip.weatherLocation || ''))}&t=&z=15&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
                                                             </div>
                                                         )}
                                                     </details>
@@ -2295,79 +2421,42 @@ export default function TravelApp() {
                 </main>
             )}
 
-            <Modal isOpen={modalOpen === 'share'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Share Trip">
-                {/* ... existing share modal content ... */}
-                 {/* (Collapsed for brevity - unchanged) */}
-                 <div className="space-y-6">
-                    {sharedCode ? (
-                        <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
-                            <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
-                                <Check size={32} />
-                            </div>
-                            <div>
-                                <h4 className="font-black text-xl text-slate-900 dark:text-white mb-1">Trip Published!</h4>
-                                <p className="text-sm text-slate-500">Share this code with friends:</p>
-                            </div>
-                            <div className="flex items-center gap-2 justify-center">
-                                <code className="text-3xl font-mono font-black tracking-widest text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-800">
-                                    {sharedCode}
-                                </code>
-                                <button onClick={() => copyToClipboard(sharedCode, () => alert("Code copied!"))} className="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl transition-colors">
-                                    <Copy size={20} />
-                                </button>
-                            </div>
-
-                            <div className="pt-2">
-                                <p className="text-xs text-slate-500 mb-2 font-medium">OR Share direct link (No Login Required)</p>
-                                <button 
-                                    onClick={() => {
-                                        const url = `${window.location.origin}${window.location.pathname}?shareId=${sharedCode}`;
-                                        copyToClipboard(url, () => alert("Link Copied! Friends can view without logging in."));
-                                    }}
-                                    className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                                >
-                                    <LinkIcon size={16} /> Copy Instant Access Link
-                                </button>
-                            </div>
-
-                            <p className="text-xs text-slate-400">They can also use "Import" to load a copy of your trip.</p>
+            <Modal isOpen={modalOpen === 'share_success'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Trip Shared!">
+                <div className="space-y-6">
+                    <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
+                        <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
+                            <Check size={32} />
                         </div>
-                    ) : (
-                        <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-center">
-                            <div className="mx-auto w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-3">
-                                <Share2 size={24} />
-                            </div>
-                            <h4 className="font-bold dark:text-white">Publish to Public</h4>
-                            <p className="text-sm text-slate-500 mb-4">Generates a unique 6-character code for others to import a copy of this trip.</p>
-                            <button onClick={handleShareTrip} className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold text-sm shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 transition-colors">
-                                Generate Public Link
+                        <div>
+                            <h4 className="font-black text-xl text-slate-900 dark:text-white mb-1">Trip Published!</h4>
+                            <p className="text-sm text-slate-500">Share this code with friends:</p>
+                        </div>
+                        <div className="flex items-center gap-2 justify-center">
+                            <code className="text-3xl font-mono font-black tracking-widest text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-800">
+                                {sharedCode}
+                            </code>
+                            <button onClick={() => copyToClipboard(sharedCode, () => alert("Code copied!"))} className="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl transition-colors">
+                                <Copy size={20} />
                             </button>
                         </div>
-                    )}
-                    
-                    <div className="border-t border-slate-100 dark:border-slate-800 pt-6">
-                        <h4 className="font-bold text-sm mb-3 dark:text-white flex items-center gap-2">
-                            <Download size={16}/> Import a Friend's Trip
-                        </h4>
-                        <p className="text-xs text-slate-500 mb-2">Enter the 6-character code shared by your friend.</p>
-                        <form onSubmit={handleImportTrip} className="flex gap-2">
-                            <input 
-                                name="shareId" 
-                                placeholder="Enter 6-digit Code (e.g. A7B2X9)" 
-                                className="flex-grow bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none font-mono text-sm uppercase placeholder:normal-case" 
-                                required 
-                                maxLength={6} 
-                            />
-                            <button type="submit" className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-xl font-bold text-sm hover:opacity-80 transition-opacity">
-                                Import
+
+                        <div className="pt-2">
+                            <p className="text-xs text-slate-500 mb-2 font-medium">OR Share direct link (No Login Required)</p>
+                            <button 
+                                onClick={() => {
+                                    const url = `${window.location.origin}${window.location.pathname}?shareId=${sharedCode}`;
+                                    copyToClipboard(url, () => alert("Link Copied! Friends can view without logging in."));
+                                }}
+                                className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                            >
+                                <LinkIcon size={16} /> Copy Instant Access Link
                             </button>
-                        </form>
+                        </div>
                     </div>
                 </div>
             </Modal>
             
             <Modal isOpen={modalOpen === 'rates'} onClose={() => setModalOpen(null)} title="Exchange Rates">
-                {/* ... existing rates modal ... */}
                 <div className="space-y-4">
                     <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl text-center">
                         <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
@@ -2403,7 +2492,6 @@ export default function TravelApp() {
             </Modal>
 
              <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
-                {/* ... existing settings modal ... */}
                 <div className="space-y-6">
                     <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-transparent dark:border-slate-700">
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
@@ -2419,7 +2507,6 @@ export default function TravelApp() {
                     
                     <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
 
-                    {/* NEW: Global Actions Section */}
                     <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
                         <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Quick Actions</h4>
                         <button 
@@ -2553,7 +2640,6 @@ export default function TravelApp() {
               </Modal>
             
             <Modal isOpen={!!imageEditState} onClose={() => setImageEditState(null)} title="Change Activity Photo">
-                {/* ... existing image edit modal ... */}
                 <div className="space-y-4">
                     <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center relative border border-slate-200 dark:border-slate-700">
                         <img src={imageEditState?.url} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558981806-ec527fa84c3d?auto=format&fit=crop&w=600&q=80'} />
