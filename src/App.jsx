@@ -2128,6 +2128,25 @@ export default function TravelApp() {
         }; 
         updateTrip({ days: newDays }); 
     };
+
+    const handleMoveActivity = (sourceDayIdx, targetDayIdx, actId) => {
+        if (sourceDayIdx === targetDayIdx) return;
+        const newDays = [...trip.days];
+        
+        const sourceActivities = [...newDays[sourceDayIdx].activities];
+        const actIndex = sourceActivities.findIndex(a => a.id === actId);
+        if (actIndex === -1) return;
+
+        // Remove from source day
+        const [activityToMove] = sourceActivities.splice(actIndex, 1);
+        newDays[sourceDayIdx] = { ...newDays[sourceDayIdx], activities: sourceActivities };
+
+        // Add to target day
+        const targetActivities = [...newDays[targetDayIdx].activities, activityToMove];
+        newDays[targetDayIdx] = { ...newDays[targetDayIdx], activities: targetActivities };
+
+        updateTrip({ days: newDays });
+    };
     
     const handleOptimizeRoute = () => {
         const newDays = [...trip.days];
@@ -2551,10 +2570,21 @@ export default function TravelApp() {
                                                         </button>
                                                     )}
                                                     {isEditMode && (
-                                                        <div className="flex gap-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-slate-800">
-                                                            <GripVertical className="text-slate-300 cursor-grab" size={20} />
-                                                            <button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600">
-                                                                <Trash2 size={18} />
+                                                        <div className="flex gap-1 items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-slate-800">
+                                                            <select
+                                                                value={activeDayIdx}
+                                                                onChange={(e) => handleMoveActivity(activeDayIdx, Number(e.target.value), act.id)}
+                                                                className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold rounded outline-none cursor-pointer py-1 px-1.5 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                                                title="Move Activity to Day"
+                                                            >
+                                                                {trip.days.map((d, i) => (
+                                                                    <option key={d.id} value={i}>Move to Day {i + 1}</option>
+                                                                ))}
+                                                            </select>
+                                                            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
+                                                            <GripVertical className="text-slate-300 cursor-grab" size={16} />
+                                                            <button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                                                <Trash2 size={16} />
                                                             </button>
                                                         </div>
                                                     )}
