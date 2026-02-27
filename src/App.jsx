@@ -1701,6 +1701,7 @@ export default function TravelApp() {
     const [user, setUser] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [trips, setTrips] = useState([]);
+    const lastSyncedTrips = useRef("[]");
     
     // -- LOCAL STORAGE PERSISTENCE --
     const [isDarkMode, setIsDarkMode] = useState(() => { 
@@ -1839,6 +1840,7 @@ export default function TravelApp() {
             setImageEditState(null); 
             setTripToDelete(null); 
             setTrips([]); 
+            lastSyncedTrips.current = "[]";
             setIsDataLoaded(false);
             localStorage.removeItem('currentTripId'); 
             localStorage.removeItem('view');
@@ -1847,22 +1849,39 @@ export default function TravelApp() {
 
     useEffect(() => {
         if (!user) return;
-        const unsub = onSnapshot(getUserTripRef(user.uid), (doc) => {
-            if (doc.exists()) {
-                const data = doc.data();
-                setTrips(data.allTrips || []);
-                if (view === 'trip' && currentTripId && !data.allTrips.find(t => t.id === currentTripId)) { 
-                    setView('dashboard'); 
-                    setCurrentTripId(null); 
-                }
-            } else { 
-                setDoc(getUserTripRef(user.uid), { allTrips: [], currentTripId: null }); 
+        const unsub = onSnapshot(getUserTripRef(user.uid), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                const remoteTrips = data.allTrips || [];
+                const remoteStr = JSON.stringify(remoteTrips);
+
+                setTrips(prev => {
+                    const prevStr = JSON.stringify(prev);
+                    if (prevStr === remoteStr) return prev; // Avoid unnecessary state updates
+                    lastSyncedTrips.current = remoteStr;
+                    return remoteTrips;
+                });
+            } else {
+                setDoc(getUserTripRef(user.uid), { allTrips: [] }, { merge: true });
+                setTrips(prev => {
+                    lastSyncedTrips.current = "[]";
+                    return [];
+                });
             }
-            setIsDataLoaded(true); 
+            setIsDataLoaded(true);
+        }, (error) => {
+            console.error("Firestore sync error:", error);
         });
         return () => unsub();
-    }, [user, view, currentTripId]);
+    }, [user]); // Removed dynamic dependencies to stop destroying the listener on navigation
     
+    useEffect(() => {
+        if (view === 'trip' && currentTripId && isDataLoaded && !trips.find(t => t.id === currentTripId)) {
+            setView('dashboard');
+            setCurrentTripId(null);
+        }
+    }, [trips, currentTripId, view, isDataLoaded]);
+
     useEffect(() => { 
         if (dayRefs.current[activeDayIdx]) { 
             dayRefs.current[activeDayIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); 
@@ -1872,11 +1891,22 @@ export default function TravelApp() {
     const saveTimeout = useRef(null);
     useEffect(() => {
         if (!user || !isDataLoaded) return;
+        const currentStr = JSON.stringify(trips);
+
+        // Crucial Fix: Prevent echoing data back to Firestore if it perfectly matches the last incoming sync
+        if (currentStr === lastSyncedTrips.current) return;
+
         clearTimeout(saveTimeout.current);
-        saveTimeout.current = setTimeout(() => { 
-            setDoc(getUserTripRef(user.uid), { allTrips: trips, currentTripId }, { merge: true }); 
+        saveTimeout.current = setTimeout(() => {
+            setDoc(getUserTripRef(user.uid), { allTrips: trips }, { merge: true })
+                .then(() => {
+                    lastSyncedTrips.current = currentStr; // Mark as successfully saved
+                })
+                .catch(err => console.error("Auto-save error:", err));
         }, 1000);
-    }, [trips, currentTripId, user, isDataLoaded]);
+
+        return () => clearTimeout(saveTimeout.current);
+    }, [trips, user, isDataLoaded]);
 
     const { weatherData, isError: weatherError, isHistorical } = useWeather(
         trip?.lat || 22.3193, 
