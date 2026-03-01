@@ -144,7 +144,7 @@ const getSharedTripRef = (shareCode) => {
 };
 
 // --- DATA CONSTANTS ---
-const EXCHANGE_RATES = {
+const FALLBACK_EXCHANGE_RATES = {
     USD: 1.0, PHP: 58.75, HKD: 7.83, EUR: 0.92, JPY: 155.0, GBP: 0.80, MOP: 8.01,
     SGD: 1.35, THB: 36.5, KRW: 1380, CNY: 7.23, AUD: 1.52, CAD: 1.37
 };
@@ -721,16 +721,16 @@ const ConfirmationModal = ({ config, onClose }) => {
     );
 };
 
-const ExpenseCard = ({ expense, onDelete, onEdit, onViewReceipt, isEditMode, currencyOptions, targetCurrency }) => {
+const ExpenseCard = ({ expense, onDelete, onEdit, onViewReceipt, isEditMode, currencyOptions, targetCurrency, exchangeRates }) => {
     const inputCurrencyCode = expense.inputCurrencyCode || BASE_CURRENCY;
     const amountInput = expense.amountInput !== undefined ? expense.amountInput : expense.amount;
     const inputCurrencyObj = currencyOptions.find(c => c.code === inputCurrencyCode) || { symbol: '', code: inputCurrencyCode };
     const catObj = CATEGORY_ICONS.find(c => c.id === expense.category) || CATEGORY_ICONS[8];
     const Icon = catObj.icon;
 
-    const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
-    const inputRate = EXCHANGE_RATES[inputCurrencyCode] || 1;
-    const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
+    const targetRate = exchangeRates[targetCurrency] || 1;
+    const inputRate = exchangeRates[inputCurrencyCode] || 1;
+    const baseRate = exchangeRates[BASE_CURRENCY] || 1;
     const amountInBase = amountInput / inputRate * baseRate; 
     const amountInTarget = amountInBase * (targetRate / baseRate);
     
@@ -786,7 +786,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, onViewReceipt, isEditMode, cur
 
 // --- FORMS ---
 
-const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialData, targetCurrency, onCancel }) => {
+const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialData, targetCurrency, onCancel, exchangeRates }) => {
     const [name, setName] = useState('');
     const [amountInput, setAmountInput] = useState('');
     const [category, setCategory] = useState('food');
@@ -806,8 +806,8 @@ const AddExpenseForm = ({ onAddExpense, currencyOptions, convertToBase, initialD
         }
     }, [initialData]);
 
-    const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
-    const inputRate = EXCHANGE_RATES[inputCurrencyCode] || 1;
+    const targetRate = exchangeRates[targetCurrency] || 1;
+    const inputRate = exchangeRates[inputCurrencyCode] || 1;
     const convertedValue = amountInput ? (Number(amountInput) / inputRate * targetRate) : 0;
     const targetSymbol = currencyOptions.find(c => c.code === targetCurrency)?.symbol || targetCurrency;
 
@@ -1343,7 +1343,7 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     );
 };
 
-const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
+const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm, exchangeRates }) => {
     const [expenses, setExpenses] = useState([]);
     const [targetCurrency, setTargetCurrency] = useState(trip?.currency || 'USD'); 
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -1411,11 +1411,11 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
         setEditingExpense(null); 
     };
 
-    const convertToBase = (amt, code) => (amt / (EXCHANGE_RATES[code] || 1)) * EXCHANGE_RATES[BASE_CURRENCY];
+    const convertToBase = (amt, code) => (amt / (exchangeRates[code] || 1)) * exchangeRates[BASE_CURRENCY];
     
     const totalBase = tripExpenses.reduce((acc, curr) => acc + (Number(curr.amount)||0), 0);
-    const targetRate = EXCHANGE_RATES[targetCurrency] || 1;
-    const baseRate = EXCHANGE_RATES[BASE_CURRENCY] || 1;
+    const targetRate = exchangeRates[targetCurrency] || 1;
+    const baseRate = exchangeRates[BASE_CURRENCY] || 1;
     const totalDisplay = totalBase * (targetRate / baseRate);
 
     // SORTING LOGIC
@@ -1506,6 +1506,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
                                                 isEditMode={isEditMode} 
                                                 currencyOptions={CURRENCY_OPTIONS}
                                                 targetCurrency={targetCurrency}
+                                                exchangeRates={exchangeRates}
                                             />
                                         ))}
                                     </div>
@@ -1524,6 +1525,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
                                     isEditMode={isEditMode} 
                                     currencyOptions={CURRENCY_OPTIONS}
                                     targetCurrency={targetCurrency}
+                                    exchangeRates={exchangeRates}
                                 />
                             ))}
                         </div>
@@ -1539,6 +1541,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
                     initialData={editingExpense} 
                     targetCurrency={targetCurrency} 
                     onCancel={handleCloseModal}
+                    exchangeRates={exchangeRates}
                 />
             </Modal>
             
@@ -1733,14 +1736,13 @@ const parseTextToItinerary = (text, tripStartDate) => {
                 // Detected an activity with a time
                 const timeStr = timeMatch[1].trim();
                 const titleStr = trimmed.substring(timeStr.length).replace(/^[\s\-•|]+/, '').trim();
-                const startTime = timeStr.split('-')[0].trim();
                 
                 currentDay.activities.push({
                     id: Math.random().toString(36).substr(2, 9),
-                    time: startTime,
+                    time: timeStr,
                     title: titleStr || "Activity",
                     type: 'attraction',
-                    desc: timeStr, 
+                    desc: '', 
                     details: '',
                     currency: 'USD',
                     cost: 0,
@@ -1784,6 +1786,26 @@ export default function TravelApp() {
     const [authLoading, setAuthLoading] = useState(true);
     const [trips, setTrips] = useState([]);
     const lastSyncedTrips = useRef("[]");
+    
+    // -- REAL-TIME EXCHANGE RATES --
+    const [exchangeRates, setExchangeRates] = useState(FALLBACK_EXCHANGE_RATES);
+    const [ratesLastUpdated, setRatesLastUpdated] = useState('Fetching live rates...');
+
+    useEffect(() => {
+        fetch('https://open.er-api.com/v6/latest/USD')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.rates) {
+                    setExchangeRates(prev => ({ ...prev, ...data.rates }));
+                    const updateDate = new Date(data.time_last_update_unix * 1000).toLocaleDateString();
+                    setRatesLastUpdated(`Live rates updated: ${updateDate}`);
+                }
+            })
+            .catch(err => {
+                console.error("Rates fetch error", err);
+                setRatesLastUpdated("Using offline fallback rates.");
+            });
+    }, []);
     
     // -- LOCAL STORAGE PERSISTENCE --
     const [isDarkMode, setIsDarkMode] = useState(() => { 
@@ -2548,7 +2570,7 @@ export default function TravelApp() {
                 <BottomNav viewMode={viewMode} setViewMode={setViewMode} />
                 <ConfirmationModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
 
-                {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} requestConfirm={requestConfirm} />)}
+                {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} requestConfirm={requestConfirm} exchangeRates={exchangeRates} />)}
                 
                 {viewMode === 'calendar' && (<CalendarView trip={trip} onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} />)}
                 
@@ -2899,6 +2921,8 @@ export default function TravelApp() {
                                 Reference rates used for automatic budget conversions.
                                 <br/>
                                 <span className="font-bold text-slate-700 dark:text-slate-300">Base Currency: 1.00 USD ($)</span>
+                                <br/>
+                                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 inline-block">{ratesLastUpdated}</span>
                             </p>
                         </div>
                         
@@ -2917,7 +2941,7 @@ export default function TravelApp() {
                                     </div>
                                     <div className="text-right">
                                         <p className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">
-                                            {EXCHANGE_RATES[c.code]?.toFixed(2) || '-'}
+                                            {exchangeRates[c.code]?.toFixed(2) || '-'}
                                         </p>
                                         <p className="text-[10px] text-slate-400 font-medium">per 1 USD</p>
                                     </div>
