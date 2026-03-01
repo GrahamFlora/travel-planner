@@ -73,7 +73,8 @@ import {
   Navigation,
   Paperclip,
   FileText,
-  Fingerprint
+  Fingerprint,
+  Printer
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -144,19 +145,8 @@ const getSharedTripRef = (shareCode) => {
 
 // --- DATA CONSTANTS ---
 const EXCHANGE_RATES = {
-    USD: 1.0, 
-    PHP: 58.75, 
-    HKD: 7.83, 
-    EUR: 0.92, 
-    JPY: 155.0, 
-    GBP: 0.80, 
-    MOP: 8.01,
-    SGD: 1.35, 
-    THB: 36.5, 
-    KRW: 1380, 
-    CNY: 7.23, 
-    AUD: 1.52, 
-    CAD: 1.37
+    USD: 1.0, PHP: 58.75, HKD: 7.83, EUR: 0.92, JPY: 155.0, GBP: 0.80, MOP: 8.01,
+    SGD: 1.35, THB: 36.5, KRW: 1380, CNY: 7.23, AUD: 1.52, CAD: 1.37
 };
 
 const CURRENCY_OPTIONS = [
@@ -325,7 +315,7 @@ const NavButton = ({ icon: Icon, label, active, onClick }) => (
 );
 
 const BottomNav = ({ viewMode, setViewMode }) => (
-  <div className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-3xl z-50 flex justify-around items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] px-2 py-1 safe-area-bottom ring-1 ring-slate-900/5 dark:ring-white/10">
+  <div className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-3xl z-50 flex justify-around items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] px-2 py-1 safe-area-bottom ring-1 ring-slate-900/5 dark:ring-white/10 print:hidden">
      <NavButton icon={LayoutList} label="Itinerary" active={viewMode === 'timeline'} onClick={() => setViewMode('timeline')} />
      <NavButton icon={CalendarIcon} label="Calendar" active={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} />
      <NavButton icon={DollarSign} label="Budget" active={viewMode === 'budget'} onClick={() => setViewMode('budget')} />
@@ -411,11 +401,10 @@ const Toast = ({ message, onClose }) => (
   </div>
 );
 
-// --- FIXED LOGO COMPONENT ---
+// --- LOGO COMPONENT ---
 const Logo = ({ size = "md", onClick, forceWhite = false }) => {
     const dim = size === "lg" ? "w-16 h-16" : "w-8 h-8";
     const txt = size === "lg" ? "text-3xl" : "text-xl";
-    // Dynamically choose text color based on the forceWhite prop
     const textColor = forceWhite ? "text-white" : "text-slate-900 dark:text-white";
     
     return (
@@ -476,8 +465,6 @@ const LoginPage = ({ onLogin }) => {
                 return;
             }
 
-            // Trigger the native prompt using a dummy challenge to show functionality.
-            // In a real app, this challenge comes from your server.
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
@@ -490,8 +477,6 @@ const LoginPage = ({ onLogin }) => {
             });
 
         } catch (err) {
-            // Because we don't have a registered passkey on a backend for this domain, it will fail.
-            // We catch it and show a graceful explanation.
             if (err.name === 'NotAllowedError') {
                 console.log("User canceled biometric prompt.");
             } else {
@@ -509,14 +494,12 @@ const LoginPage = ({ onLogin }) => {
 
     return (
         <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            {/* Ambient Dark Mode Glows */}
             <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 blur-[120px] rounded-full pointer-events-none" />
             <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none" />
 
             {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
             
             <main className="w-full max-w-md bg-slate-900/60 backdrop-blur-xl rounded-3xl shadow-2xl shadow-black p-8 border border-white/10 z-10 animate-in fade-in zoom-in duration-300">
-                {/* Applied forceWhite since the login screen is always dark */}
                 <div className="flex justify-center mb-8"><Logo size="lg" forceWhite={true} /></div>
                 
                 <h2 className="text-3xl font-black text-center mb-2 text-white tracking-tight">
@@ -541,7 +524,6 @@ const LoginPage = ({ onLogin }) => {
                     </button>
                 </form>
 
-                {/* Biometric Login Integration */}
                 {!isSignUp && (
                     <div className="mt-6">
                         <div className="relative flex items-center py-2">
@@ -679,7 +661,7 @@ const WeatherDisplay = ({ date, weatherData, isError, isHistorical }) => {
 const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 print:hidden">
       <div className={`bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full ${maxWidth} overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200`}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
           <h3 className="font-bold text-lg text-slate-900 dark:text-white">{title}</h3>
@@ -696,7 +678,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
 const ConfirmationModal = ({ config, onClose }) => {
     if (!config) return null;
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in print:hidden">
              <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6 border border-slate-200 dark:border-slate-700 animate-in zoom-in-95">
                  <div className="flex items-center gap-4 mb-4 text-red-600 dark:text-red-400">
                      <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-full">
@@ -749,7 +731,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, onViewReceipt, isEditMode, cur
                         <span className="text-xs text-slate-500 capitalize">{catObj.label}</span>
                         {expense.date && <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">{new Date(expense.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
                         {expense.receipt && (
-                            <button onClick={(e) => { e.stopPropagation(); onViewReceipt(expense.receipt); }} className="text-indigo-500 hover:text-indigo-600 flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded transition-colors">
+                            <button onClick={(e) => { e.stopPropagation(); onViewReceipt(expense.receipt); }} className="text-indigo-500 hover:text-indigo-600 flex items-center gap-1 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded transition-colors print:hidden">
                                 <FileText size={10} /> Receipt
                             </button>
                         )}
@@ -769,7 +751,7 @@ const ExpenseCard = ({ expense, onDelete, onEdit, onViewReceipt, isEditMode, cur
                     )}
                 </div>
                 {isEditMode && (
-                    <div className="flex gap-1 ml-2">
+                    <div className="flex gap-1 ml-2 print:hidden">
                         <button onClick={(e) => { e.stopPropagation(); onEdit(expense); }} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors">
                             <Pencil size={16} />
                         </button>
@@ -981,7 +963,7 @@ const CalendarView = ({ trip, onSelectDay }) => {
     trip.days.forEach((d, idx) => { tripDayMap[d.date] = { ...d, idx }; });
 
     return (
-        <main className="max-w-6xl mx-auto mt-6 px-4 pb-32 space-y-6 animate-in fade-in">
+        <main className="max-w-6xl mx-auto mt-6 px-4 pb-32 space-y-6 animate-in fade-in print:hidden">
              <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white">
@@ -1223,7 +1205,7 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
             
             <button 
                 onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                className="p-2 -mr-2 -mt-2 text-slate-300 hover:text-red-500 transition-colors"
+                className="p-2 -mr-2 -mt-2 text-slate-300 hover:text-red-500 transition-colors print:hidden"
                 aria-label="Delete item"
             >
                 <Trash2 size={16} />
@@ -1245,7 +1227,7 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                                 {checklist.length} items • {Math.round(progress)}% done
                             </p>
                         </div>
-                         <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2 print:hidden">
                              <div className="relative">
                                  <button 
                                     onClick={() => setIsSortOpen(!isSortOpen)}
@@ -1264,7 +1246,7 @@ const ChecklistView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                          </div>
                     </div>
                     
-                    <form onSubmit={handleAddItem} className="flex gap-2">
+                    <form onSubmit={handleAddItem} className="flex gap-2 print:hidden">
                          <div className="relative flex-shrink-0">
                              <select 
                                 value={targetDayId}
@@ -1444,7 +1426,7 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm }) => {
     const sortedDates = Object.keys(expensesByDate).sort();
 
     return (
-        <main className="max-w-2xl mx-auto mt-6 px-4 pb-32 space-y-6 animate-in fade-in">
+        <main className="max-w-2xl mx-auto mt-6 px-4 pb-32 space-y-6 animate-in fade-in print:hidden">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-indigo-900 dark:to-indigo-950 p-6 rounded-3xl text-white shadow-xl relative">
                 <div className="relative z-10">
                     <p className="text-slate-400 text-sm font-medium mb-1">Total Trip Cost</p>
@@ -1569,7 +1551,7 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
     }, [trips, searchQuery, sortBy]);
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 overflow-x-hidden relative selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-6 md:p-8 overflow-x-hidden relative selection:bg-indigo-500/30 print:hidden">
             {/* Ambient Background Glows */}
             <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] md:w-[800px] h-[300px] md:h-[400px] bg-indigo-500/10 dark:bg-indigo-500/15 blur-[100px] md:blur-[120px] rounded-full pointer-events-none" />
 
@@ -1696,6 +1678,87 @@ const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip
     );
 };
 
+// --- SMART IMPORT PARSER ---
+const parseTextToItinerary = (text, tripStartDate) => {
+    const lines = text.split('\n');
+    const newDays = [];
+    let currentDay = null;
+    let tripSummary = [];
+
+    // Regex to match "Day X" or dates at the start of a line
+    const dayRegex = /^Day\s*(\d+).*?(?:\||-|:)\s*(.*)/i;
+    // Regex to match "3:15 PM" or "15:00" or "3:15 - 4:15 PM"
+    const timeRegex = /^(\d{1,2}:\d{2}(?:\s*(?:AM|PM|am|pm))?(?:\s*-\s*\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)?)/i;
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+
+        // Detect Day Headers
+        if (trimmed.toLowerCase().startsWith('day ')) {
+            const parts = trimmed.split(/\||-|:/);
+            currentDay = {
+                id: Math.random().toString(36).substr(2, 9),
+                title: parts[0].trim(),
+                summary: parts.slice(1).join(' | ').trim(),
+                date: '', 
+                activities: []
+            };
+            newDays.push(currentDay);
+            return;
+        }
+
+        if (currentDay) {
+            const timeMatch = trimmed.match(timeRegex);
+            if (timeMatch) {
+                // Detected an activity with a time
+                const timeStr = timeMatch[1].trim();
+                const titleStr = trimmed.substring(timeStr.length).replace(/^[\s\-•|]+/, '').trim();
+                const startTime = timeStr.split('-')[0].trim();
+                
+                currentDay.activities.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    time: startTime,
+                    title: titleStr || "Activity",
+                    type: 'attraction',
+                    desc: timeStr, 
+                    details: '',
+                    currency: 'USD',
+                    cost: 0,
+                    image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80'
+                });
+            } else if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+                // Bullet points: append to last activity details
+                if (currentDay.activities.length > 0) {
+                    const lastAct = currentDay.activities[currentDay.activities.length - 1];
+                    lastAct.details = (lastAct.details ? lastAct.details + '\n' : '') + trimmed;
+                }
+            } else {
+                // General text: append to day summary or activity details
+                 if (currentDay.activities.length > 0) {
+                    const lastAct = currentDay.activities[currentDay.activities.length - 1];
+                    lastAct.details = (lastAct.details ? lastAct.details + '\n' : '') + trimmed;
+                } else {
+                    currentDay.summary = (currentDay.summary ? currentDay.summary + '\n' : '') + trimmed;
+                }
+            }
+        } else {
+            // Text found before the first "Day X"
+            tripSummary.push(trimmed);
+        }
+    });
+
+    // Assign sequential dates to the parsed days
+    const start = new Date(tripStartDate || new Date());
+    newDays.forEach((day, idx) => {
+        const d = new Date(start);
+        d.setUTCDate(d.getUTCDate() + idx);
+        day.date = d.toISOString().split('T')[0];
+    });
+
+    return { days: newDays, summary: tripSummary.join('\n') };
+};
+
 // --- MAIN APP ---
 export default function TravelApp() {
     const [user, setUser] = useState(null);
@@ -1737,6 +1800,9 @@ export default function TravelApp() {
     const [confirmConfig, setConfirmConfig] = useState(null);
     const [tripToShare, setTripToShare] = useState(null);
     const [viewingAttachment, setViewingAttachment] = useState(null);
+
+    // Smart Import State
+    const [smartImportText, setSmartImportText] = useState('');
 
     const requestConfirm = (title, message, onConfirm) => {
         setConfirmConfig({ title, message, onConfirm });
@@ -1802,7 +1868,7 @@ export default function TravelApp() {
                 try { 
                     await signInWithCustomToken(auth, initialAuthToken); 
                 } catch (err) { 
-                    console.error("Token auth failed:", err); 
+                    // Silently handle token mismatch
                 } 
             } 
         };
@@ -1917,6 +1983,27 @@ export default function TravelApp() {
     
     const updateTrip = (updates) => { 
         setTrips(prev => prev.map(t => t.id === currentTripId ? { ...t, ...updates } : t)); 
+    };
+
+    const handleExecuteSmartImport = () => {
+        if (!smartImportText.trim()) return;
+        const parsedResult = parseTextToItinerary(smartImportText, trip.startDate);
+        
+        if (parsedResult.days.length === 0) {
+            alert("No days detected. Try formatting like 'Day 1: Arrival' followed by '3:00 PM: Check-in'.");
+            return;
+        }
+
+        requestConfirm(
+            "Replace Itinerary?", 
+            `This will replace your current days with ${parsedResult.days.length} imported days. Are you sure?`,
+            () => {
+                updateTrip({ days: parsedResult.days });
+                setModalOpen(null);
+                setSmartImportText('');
+                setActiveDayIdx(0);
+            }
+        );
     };
     
     const handleGlobalOptimize = () => {
@@ -2318,668 +2405,747 @@ export default function TravelApp() {
     const dayRouteUrl = getGoogleMapsDirectionsUrl(activeDay.activities);
 
     return (
-        <div className="min-h-screen transition-colors duration-500 bg-zinc-100 dark:bg-slate-950 text-zinc-900 dark:text-slate-100 font-sans pb-32 overflow-x-hidden">
-            <div className="relative h-[40vh] md:h-[50vh] w-full group">
-                <div className="absolute inset-0 overflow-hidden rounded-b-3xl">
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
-                    <img 
-                        src={trip.coverImage} 
-                        alt="Trip Cover" 
-                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
-                        onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80'} 
-                    />
+        <div className="min-h-screen transition-colors duration-500 bg-zinc-100 dark:bg-slate-950 text-zinc-900 dark:text-slate-100 font-sans pb-32 overflow-x-hidden print:bg-white print:text-black print:pb-0">
+            
+            {/* --- HIDDEN PRINT LAYOUT (Only visible when printing) --- */}
+            <div className="hidden print:block max-w-4xl mx-auto p-8 font-sans bg-white text-black">
+                <div className="border-b-4 border-indigo-600 pb-6 mb-8">
+                    <h1 className="text-5xl font-black text-slate-900 mb-2">{trip.title}</h1>
+                    <p className="text-xl font-bold text-slate-500">
+                        {new Date(trip.startDate).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                        {trip.days.length > 1 ? ` - ${new Date(createUTCDate(trip.startDate).setUTCDate(createUTCDate(trip.startDate).getUTCDate() + trip.days.length - 1)).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
+                    </p>
+                    <p className="text-sm text-slate-400 mt-2">Generated by HorizonPlanner</p>
                 </div>
-                
-                <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
-                      {/* Applied forceWhite here since it sits on top of the dark image gradient */}
-                      <Logo size="sm" onClick={() => { setView('dashboard'); setCurrentTripId(null); }} forceWhite={true} />
-                      
-                      <div className="flex gap-2 relative">
-                        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/30 backdrop-blur-md rounded-full border border-white/10 mr-2">
-                            <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                                <User size={12} className="text-white" />
-                            </div>
-                            <span className="text-[10px] font-bold text-white max-w-[100px] truncate">{user.email || 'Guest'}</span>
+
+                {trip.days.map((day, dIdx) => (
+                    <div key={day.id} className="mb-12 page-break-inside-avoid">
+                        <div className="bg-slate-100 p-4 rounded-xl mb-6">
+                            <h2 className="text-2xl font-black text-slate-800">Day {dIdx + 1}: {day.title}</h2>
+                            <p className="font-bold text-indigo-600">{new Date(day.date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</p>
+                            {day.summary && <p className="mt-2 text-slate-600 italic border-l-2 border-indigo-300 pl-3">{day.summary}</p>}
                         </div>
-                        
-                        <button 
-                            onClick={() => setIsEditMode(!isEditMode)} 
-                            className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`} 
-                            title="Toggle Edit Mode"
-                        >
-                            {isEditMode ? <Unlock size={18} /> : <Lock size={18} />}
-                        </button>
-                        
-                        <div className="relative">
-                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md hover:bg-black/50 transition-colors">
-                                {isMenuOpen ? <X size={18} /> : <MenuIcon size={18} />}
-                            </button>
-                            
-                            {isMenuOpen && (
-                                <div className="absolute top-14 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 z-50 animate-in slide-in-from-top-2">
-                                     <div className="md:hidden flex items-center gap-2 p-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                                        <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                                            <User size={12} className="text-indigo-600" />
-                                        </div>
-                                        <span className="text-[10px] font-bold text-slate-500 truncate w-full">{user.email}</span>
-                                     </div>
-                                     <button onClick={() => { executeShareTrip(trip); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Share2 size={16} /> Share Trip</button>
-                                     <button onClick={() => { setModalOpen('rates'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Banknote size={16} /> Exchange Rates</button>
-                                     <button onClick={() => { setModalOpen('settings'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Settings size={16} /> Trip Settings</button>
-                                     <button onClick={() => { setShowSignOutConfirm(true); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-red-500 text-sm font-medium"><LogOut size={16} /> Sign Out</button>
-                                </div>
-                            )}
-                        </div>
-                      </div>
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 z-20 p-6 md:p-12 max-w-6xl mx-auto">
-                    <div className="animate-in slide-in-from-bottom-5 duration-700 relative">
-                        <div className="flex items-center gap-3 mb-4">
-                            <span className="px-3 py-1 bg-indigo-500/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg backdrop-blur-sm">
-                                {trip.startDate}
-                            </span>
-                            <div className="flex -space-x-2">
-                                {trip.companions?.map((c, i) => { 
-                                    const name = typeof c === 'string' ? c : c.name; 
-                                    const photo = typeof c === 'object' ? c.photo : null; 
-                                    return (
-                                        <div key={i} className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-500 flex items-center justify-center text-[10px] font-bold text-indigo-800 relative overflow-hidden" title={name}>
-                                            {photo ? (<img src={photo} alt={name} className="w-full h-full object-cover" />) : (name[0])}
-                                        </div>
-                                    ); 
-                                })}
-                            </div>
-                        </div>
-                        
-                        {isEditMode ? (
-                            <input 
-                                type="text" 
-                                value={trip.title} 
-                                onChange={(e) => updateTrip({ title: e.target.value })} 
-                                className="block text-4xl md:text-6xl font-black text-white bg-white/10 rounded-xl px-2 -ml-2 border border-white/30 focus:border-white focus:outline-none w-full shadow-black drop-shadow-md mb-2 backdrop-blur-sm"
-                            />
+
+                        {day.activities.length === 0 ? (
+                            <p className="text-slate-400 italic pl-4">No scheduled activities for this day.</p>
                         ) : (
-                            <h1 className="text-4xl md:text-6xl font-black text-white leading-tight drop-shadow-lg mb-2">{trip.title}</h1>
-                        )}
-                        
-                        <div className="flex flex-wrap gap-4 items-center">
-                            <div className="h-1 w-12 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
-                            <p className="text-white/90 text-lg md:text-xl font-medium drop-shadow-md">
-                                {trip.days.length} Days • {trip.days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} Activities
-                            </p>
-                            
-                            {isEditMode && (
-                                <button onClick={() => setModalOpen('settings')} className="bg-black/40 backdrop-blur-md hover:bg-black/60 text-white border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all shadow-lg ml-auto md:ml-4">
-                                    <Camera size={14} /> Change Cover
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <BottomNav viewMode={viewMode} setViewMode={setViewMode} />
-            <ConfirmationModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
-
-            {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} requestConfirm={requestConfirm} />)}
-            
-            {viewMode === 'calendar' && (<CalendarView trip={trip} onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} />)}
-            
-            {viewMode === 'checklist' && (<ChecklistView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} requestConfirm={requestConfirm} />)}
-            
-            {viewMode === 'timeline' && (
-                <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30 pb-20">
-                    <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-20 z-40 mt-8">
-                        {trip.days.map((day, idx) => (
-                            <div key={day.id} ref={el => dayRefs.current[idx] = el} className="relative group/day">
-                                <button 
-                                    onClick={() => setActiveDayIdx(idx)} 
-                                    className={`relative flex-shrink-0 px-5 py-2.5 rounded-xl transition-all duration-300 flex flex-col items-center min-w-[120px] ${activeDayIdx === idx ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
-                                >
-                                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Day {idx + 1}</span>
-                                    <span className="text-sm font-semibold truncate max-w-[120px]">{day.date.split('-').slice(1).join('/')}</span>
-                                    <WeatherDisplay date={day.date} weatherData={weatherData} isError={weatherError} isHistorical={isHistorical} />
-                                </button>
-                                {isEditMode && (
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); handleDeleteDay(idx); }} 
-                                        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 z-50 transition-transform active:scale-95"
-                                    >
-                                        <X size={12} strokeWidth={3} />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                         {isEditMode && (
-                            <button onClick={handleAddDay} className="px-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-colors">
-                                <Plus size={20} />
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 md:gap-12 animate-in fade-in duration-500">
-                        <div className="space-y-6 lg:sticky lg:top-32 h-min">
-                             <div className="space-y-2">
-                                {isEditMode ? (
-                                    <>
-                                        <input 
-                                            value={activeDay.title} 
-                                            onChange={(e) => { const newDays = [...trip.days]; newDays[activeDayIdx].title = e.target.value; updateTrip({ days: newDays }); }} 
-                                            className="text-3xl font-extrabold bg-transparent border-b border-slate-300 w-full focus:outline-none dark:text-white"
-                                        />
-                                        <textarea 
-                                            value={activeDay.summary || ''} 
-                                            onChange={(e) => { const newDays = [...trip.days]; newDays[activeDayIdx].summary = e.target.value; updateTrip({ days: newDays }); }} 
-                                            className="w-full text-lg bg-transparent border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus:border-indigo-500 resize-none h-24 text-zinc-600 dark:text-slate-400" 
-                                            placeholder="Add a summary for today..." 
-                                        />
-                                    </>
-                                ) : (
-                                    <>
-                                        <h2 className="text-3xl font-extrabold text-zinc-900 dark:text-white leading-tight">{activeDay.title}</h2>
-                                        <p className="text-zinc-600 dark:text-slate-400 text-lg leading-relaxed">{activeDay.summary || "No summary."}</p>
-                                    </>
-                                )}
-                            </div>
-                            
-                            {/* --- REVAMPED ROUTE MAP --- */}
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50 overflow-hidden">
-                                <button onClick={() => setIsMapOpen(!isMapOpen)} className="w-full p-4 flex items-center justify-between font-bold text-indigo-900 dark:text-indigo-100 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 transition-colors">
-                                    <span className="flex items-center gap-2"><Map size={18} /> Itinerary Route</span>
-                                    <ChevronDown size={18} className={`transition-transform duration-300 ${isMapOpen ? 'rotate-180' : ''}`} />
-                                </button>
-                                <div className={`transition-all duration-500 ease-in-out ${isMapOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                    <div className="p-4 pt-0 space-y-4">
-                                        <div className="bg-white dark:bg-slate-800 rounded-xl p-3 shadow-inner border border-slate-100 dark:border-slate-700 max-h-48 overflow-y-auto custom-scrollbar">
-                                            {activeDay.activities.filter(a=>a.title).map((act, index, arr) => (
-                                                <div key={act.id} className="flex items-start gap-3 relative pb-4 last:pb-0">
-                                                    {index !== arr.length - 1 && <div className="absolute left-2.5 top-5 bottom-0 w-0.5 bg-indigo-200 dark:bg-indigo-800/50"></div>}
-                                                    <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-2 border-indigo-500 flex items-center justify-center flex-shrink-0 z-10 mt-0.5">
-                                                        <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300">{index + 1}</span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{act.title}</p>
-                                                        <p className="text-[10px] text-slate-500">{act.time}</p>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {activeDay.activities.length === 0 && <p className="text-xs text-slate-400 italic">Add activities to generate a route.</p>}
+                            <div className="space-y-6 pl-4 border-l-2 border-slate-200 ml-4">
+                                {day.activities.map((act, aIdx) => (
+                                    <div key={act.id} className="relative pl-6">
+                                        <div className="absolute -left-[35px] top-1 w-4 h-4 rounded-full bg-white border-4 border-indigo-500"></div>
+                                        <div className="flex items-baseline gap-4 mb-1">
+                                            <span className="font-black text-indigo-700 w-24 flex-shrink-0">{act.time}</span>
+                                            <h3 className="text-lg font-bold text-slate-900">{act.title}</h3>
                                         </div>
-                                        
-                                        {dayRouteUrl ? (
-                                             <a 
-                                                href={dayRouteUrl} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer" 
-                                                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/30 active:scale-95 block text-center text-sm"
-                                            >
-                                                <Navigation size={16} /> Open Route in Google Maps
-                                            </a>
-                                        ) : (
-                                            <div className="w-full py-3 bg-slate-200 dark:bg-slate-700 text-slate-400 font-bold rounded-xl text-center text-sm">
-                                                No locations to route
+                                        {act.desc && act.desc !== act.time && <p className="text-sm text-slate-600 mb-2">{act.desc}</p>}
+                                        {act.details && (
+                                            <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 whitespace-pre-wrap mt-2">
+                                                {act.details}
                                             </div>
                                         )}
                                     </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* --- NORMAL APP UI (Hidden when printing) --- */}
+            <div className="print:hidden">
+                <div className="relative h-[40vh] md:h-[50vh] w-full group">
+                    <div className="absolute inset-0 overflow-hidden rounded-b-3xl">
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-zinc-100 dark:to-slate-950 z-10" />
+                        <img 
+                            src={trip.coverImage} 
+                            alt="Trip Cover" 
+                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+                            onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?auto=format&fit=crop&w=2000&q=80'} 
+                        />
+                    </div>
+                    
+                    <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center p-6 text-white">
+                          <Logo size="sm" onClick={() => { setView('dashboard'); setCurrentTripId(null); }} forceWhite={true} />
+                          
+                          <div className="flex gap-2 relative">
+                            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/30 backdrop-blur-md rounded-full border border-white/10 mr-2">
+                                <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                                    <User size={12} className="text-white" />
+                                </div>
+                                <span className="text-[10px] font-bold text-white max-w-[100px] truncate">{user.email || 'Guest'}</span>
+                            </div>
+                            
+                            <button 
+                                onClick={() => setIsEditMode(!isEditMode)} 
+                                className={`p-2.5 rounded-full backdrop-blur-md border transition-all ${isEditMode ? 'bg-amber-400 text-amber-900 border-amber-300' : 'bg-black/30 border-white/20'}`} 
+                                title="Toggle Edit Mode"
+                            >
+                                {isEditMode ? <Unlock size={18} /> : <Lock size={18} />}
+                            </button>
+                            
+                            <div className="relative">
+                                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2.5 rounded-full bg-black/30 border border-white/20 backdrop-blur-md hover:bg-black/50 transition-colors">
+                                    {isMenuOpen ? <X size={18} /> : <MenuIcon size={18} />}
+                                </button>
+                                
+                                {isMenuOpen && (
+                                    <div className="absolute top-14 right-0 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-2 flex flex-col gap-1 z-50 animate-in slide-in-from-top-2">
+                                         <div className="md:hidden flex items-center gap-2 p-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                                            <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                                                <User size={12} className="text-indigo-600" />
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-500 truncate w-full">{user.email}</span>
+                                         </div>
+                                         <button onClick={() => { executeShareTrip(trip); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Share2 size={16} /> Share Trip</button>
+                                         <button onClick={() => { window.print(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Printer size={16} /> Export PDF</button>
+                                         <button onClick={() => { setModalOpen('rates'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Banknote size={16} /> Exchange Rates</button>
+                                         <button onClick={() => { setModalOpen('settings'); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 text-sm font-medium"><Settings size={16} /> Trip Settings</button>
+                                         <button onClick={() => { setShowSignOutConfirm(true); setIsMenuOpen(false); }} className="flex items-center gap-3 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-red-500 text-sm font-medium"><LogOut size={16} /> Sign Out</button>
+                                    </div>
+                                )}
+                            </div>
+                          </div>
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 z-20 p-6 md:p-12 max-w-6xl mx-auto">
+                        <div className="animate-in slide-in-from-bottom-5 duration-700 relative">
+                            <div className="flex items-center gap-3 mb-4">
+                                <span className="px-3 py-1 bg-indigo-500/90 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg backdrop-blur-sm">
+                                    {trip.startDate}
+                                </span>
+                                <div className="flex -space-x-2">
+                                    {trip.companions?.map((c, i) => { 
+                                        const name = typeof c === 'string' ? c : c.name; 
+                                        const photo = typeof c === 'object' ? c.photo : null; 
+                                        return (
+                                            <div key={i} className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-indigo-500 flex items-center justify-center text-[10px] font-bold text-indigo-800 relative overflow-hidden" title={name}>
+                                                {photo ? (<img src={photo} alt={name} className="w-full h-full object-cover" />) : (name[0])}
+                                            </div>
+                                        ); 
+                                    })}
                                 </div>
                             </div>
                             
-                            {isEditMode && (
-                                <button onClick={handleOptimizeRoute} className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
-                                    <Wand2 size={18} /> Optimize Order (By Time)
-                                </button>
+                            {isEditMode ? (
+                                <input 
+                                    type="text" 
+                                    value={trip.title} 
+                                    onChange={(e) => updateTrip({ title: e.target.value })} 
+                                    className="block text-4xl md:text-6xl font-black text-white bg-white/10 rounded-xl px-2 -ml-2 border border-white/30 focus:border-white focus:outline-none w-full shadow-black drop-shadow-md mb-2 backdrop-blur-sm"
+                                />
+                            ) : (
+                                <h1 className="text-4xl md:text-6xl font-black text-white leading-tight drop-shadow-lg mb-2">{trip.title}</h1>
+                            )}
+                            
+                            <div className="flex flex-wrap gap-4 items-center">
+                                <div className="h-1 w-12 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"></div>
+                                <p className="text-white/90 text-lg md:text-xl font-medium drop-shadow-md">
+                                    {trip.days.length} Days • {trip.days.reduce((acc, d) => acc + (d.activities?.length || 0), 0)} Activities
+                                </p>
+                                
+                                {isEditMode && (
+                                    <button onClick={() => setModalOpen('settings')} className="bg-black/40 backdrop-blur-md hover:bg-black/60 text-white border border-white/20 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all shadow-lg ml-auto md:ml-4">
+                                        <Camera size={14} /> Change Cover
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <BottomNav viewMode={viewMode} setViewMode={setViewMode} />
+                <ConfirmationModal config={confirmConfig} onClose={() => setConfirmConfig(null)} />
+
+                {viewMode === 'budget' && (<BudgetView currentUser={user} isEditMode={isEditMode} db={db} trip={trip} requestConfirm={requestConfirm} />)}
+                
+                {viewMode === 'calendar' && (<CalendarView trip={trip} onSelectDay={(idx) => { setActiveDayIdx(idx); setViewMode('timeline'); }} />)}
+                
+                {viewMode === 'checklist' && (<ChecklistView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} requestConfirm={requestConfirm} />)}
+                
+                {viewMode === 'timeline' && (
+                    <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30 pb-20">
+                        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-20 z-40 mt-8">
+                            {trip.days.map((day, idx) => (
+                                <div key={day.id} ref={el => dayRefs.current[idx] = el} className="relative group/day">
+                                    <button 
+                                        onClick={() => setActiveDayIdx(idx)} 
+                                        className={`relative flex-shrink-0 px-5 py-2.5 rounded-xl transition-all duration-300 flex flex-col items-center min-w-[120px] ${activeDayIdx === idx ? 'bg-slate-900 dark:bg-indigo-600 text-white shadow-lg scale-105' : 'hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+                                    >
+                                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Day {idx + 1}</span>
+                                        <span className="text-sm font-semibold truncate max-w-[120px]">{day.date.split('-').slice(1).join('/')}</span>
+                                        <WeatherDisplay date={day.date} weatherData={weatherData} isError={weatherError} isHistorical={isHistorical} />
+                                    </button>
+                                    {isEditMode && (
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteDay(idx); }} 
+                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 z-50 transition-transform active:scale-95"
+                                        >
+                                            <X size={12} strokeWidth={3} />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                             {isEditMode && (
+                                <div className="flex gap-2">
+                                    <button onClick={handleAddDay} className="px-4 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-colors" title="Add Empty Day">
+                                        <Plus size={20} />
+                                    </button>
+                                    <button onClick={() => setModalOpen('smart_import')} className="px-4 bg-gradient-to-tr from-purple-500 to-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 hover:scale-105 transition-transform shadow-md shadow-indigo-500/30 whitespace-nowrap" title="Smart Paste from Excel/Text">
+                                        <Wand2 size={16} /> Smart Import
+                                    </button>
+                                </div>
                             )}
                         </div>
 
-                        <div className="space-y-6">
-                             {activeDay.activities.map((act, idx) => (
-                                <div key={act.id} className={`relative group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
-                                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300 w-full">
-                                        <div className="flex flex-col sm:flex-row h-full">
-                                            <div className="relative w-full h-48 sm:w-48 sm:h-auto flex-shrink-0 bg-slate-200 group/img">
-                                                <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
-                                                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-end justify-between">
-                                                    {isEditMode ? (
-                                                        <input 
-                                                            type="text" 
-                                                            value={act.time} 
-                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'time', e.target.value)} 
-                                                            className="font-black text-white text-xl leading-none bg-transparent border-b border-white/50 outline-none w-24 focus:border-indigo-400" 
-                                                            placeholder="09:00"
-                                                        />
-                                                    ) : (
-                                                        <span className="font-black text-white text-xl leading-none drop-shadow-md tracking-tight">{act.time}</span>
-                                                    )}
-                                                </div>
-                                                {isEditMode && (
-                                                    <button onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full backdrop-blur-md transition-opacity hover:bg-black/70 shadow-lg cursor-pointer z-20 md:opacity-0 md:group-hover/img:opacity-100">
-                                                        <Camera size={16} />
-                                                    </button>
-                                                )}
+                        <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-8 md:gap-12 animate-in fade-in duration-500">
+                            <div className="space-y-6 lg:sticky lg:top-32 h-min">
+                                 <div className="space-y-2">
+                                    {isEditMode ? (
+                                        <>
+                                            <input 
+                                                value={activeDay.title} 
+                                                onChange={(e) => { const newDays = [...trip.days]; newDays[activeDayIdx].title = e.target.value; updateTrip({ days: newDays }); }} 
+                                                className="text-3xl font-extrabold bg-transparent border-b border-slate-300 w-full focus:outline-none dark:text-white"
+                                            />
+                                            <textarea 
+                                                value={activeDay.summary || ''} 
+                                                onChange={(e) => { const newDays = [...trip.days]; newDays[activeDayIdx].summary = e.target.value; updateTrip({ days: newDays }); }} 
+                                                className="w-full text-lg bg-transparent border border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-2 focus:outline-none focus:border-indigo-500 resize-none h-24 text-zinc-600 dark:text-slate-400" 
+                                                placeholder="Add a summary for today..." 
+                                            />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h2 className="text-3xl font-extrabold text-zinc-900 dark:text-white leading-tight">{activeDay.title}</h2>
+                                            <p className="text-zinc-600 dark:text-slate-400 text-lg leading-relaxed">{activeDay.summary || "No summary."}</p>
+                                        </>
+                                    )}
+                                </div>
+                                
+                                {/* --- REVAMPED ROUTE MAP --- */}
+                                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50 overflow-hidden">
+                                    <button onClick={() => setIsMapOpen(!isMapOpen)} className="w-full p-4 flex items-center justify-between font-bold text-indigo-900 dark:text-indigo-100 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 transition-colors">
+                                        <span className="flex items-center gap-2"><Map size={18} /> Itinerary Route</span>
+                                        <ChevronDown size={18} className={`transition-transform duration-300 ${isMapOpen ? 'rotate-180' : ''}`} />
+                                    </button>
+                                    <div className={`transition-all duration-500 ease-in-out ${isMapOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                        <div className="p-4 pt-0 space-y-4">
+                                            <div className="bg-white dark:bg-slate-800 rounded-xl p-3 shadow-inner border border-slate-100 dark:border-slate-700 max-h-48 overflow-y-auto custom-scrollbar">
+                                                {activeDay.activities.filter(a=>a.title).map((act, index, arr) => (
+                                                    <div key={act.id} className="flex items-start gap-3 relative pb-4 last:pb-0">
+                                                        {index !== arr.length - 1 && <div className="absolute left-2.5 top-5 bottom-0 w-0.5 bg-indigo-200 dark:bg-indigo-800/50"></div>}
+                                                        <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-2 border-indigo-500 flex items-center justify-center flex-shrink-0 z-10 mt-0.5">
+                                                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300">{index + 1}</span>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{act.title}</p>
+                                                            <p className="text-[10px] text-slate-500">{act.time}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {activeDay.activities.length === 0 && <p className="text-xs text-slate-400 italic">Add activities to generate a route.</p>}
                                             </div>
                                             
-                                            <div className="p-4 md:p-5 flex flex-col flex-grow relative min-w-0">
-                                                <div className="absolute top-4 right-4 z-10 flex gap-2">
-                                                    {!isEditMode && (
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); setEmbeddedMaps(prev => ({...prev, [act.id]: !prev[act.id]})) }} 
-                                                            className={`transition-colors p-2 rounded-full ${embeddedMaps[act.id] ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`} 
-                                                            title="Toggle Map"
-                                                        >
-                                                            <MapPin size={18} />
-                                                        </button>
-                                                    )}
+                                            {dayRouteUrl ? (
+                                                 <a 
+                                                    href={dayRouteUrl} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/30 active:scale-95 block text-center text-sm"
+                                                >
+                                                    <Navigation size={16} /> Open Route in Google Maps
+                                                </a>
+                                            ) : (
+                                                <div className="w-full py-3 bg-slate-200 dark:bg-slate-700 text-slate-400 font-bold rounded-xl text-center text-sm">
+                                                    No locations to route
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {isEditMode && (
+                                    <button onClick={handleOptimizeRoute} className="w-full py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                                        <Wand2 size={18} /> Optimize Order (By Time)
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="space-y-6">
+                                 {activeDay.activities.map((act, idx) => (
+                                    <div key={act.id} className={`relative group transition-all duration-300 ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''}`}>
+                                        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 hover:-translate-y-1 transition-all duration-300 w-full">
+                                            <div className="flex flex-col sm:flex-row h-full">
+                                                <div className="relative w-full h-48 sm:w-48 sm:h-auto flex-shrink-0 bg-slate-200 group/img">
+                                                    <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
+                                                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-end justify-between">
+                                                        {isEditMode ? (
+                                                            <input 
+                                                                type="text" 
+                                                                value={act.time} 
+                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'time', e.target.value)} 
+                                                                className="font-black text-white text-xl leading-none bg-transparent border-b border-white/50 outline-none w-24 focus:border-indigo-400" 
+                                                                placeholder="09:00"
+                                                            />
+                                                        ) : (
+                                                            <span className="font-black text-white text-xl leading-none drop-shadow-md tracking-tight">{act.time}</span>
+                                                        )}
+                                                    </div>
                                                     {isEditMode && (
-                                                        <div className="flex gap-1 items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-slate-800">
-                                                            <div className="relative flex items-center">
-                                                                <select
-                                                                    value={activeDayIdx}
-                                                                    onChange={(e) => handleMoveActivity(activeDayIdx, Number(e.target.value), act.id)}
-                                                                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-md outline-none cursor-pointer py-1.5 pl-2.5 pr-7 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors appearance-none"
-                                                                    title="Move Activity to Day"
-                                                                >
-                                                                    {trip.days.map((d, i) => (
-                                                                        <option key={d.id} value={i} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium">
-                                                                            Move to Day {i + 1}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                                <ChevronDown size={14} className="absolute right-2 pointer-events-none text-slate-400 dark:text-slate-500" />
-                                                            </div>
-                                                            <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
-                                                            <GripVertical className="text-slate-300 cursor-grab" size={16} />
-                                                            <button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
+                                                        <button onClick={() => setImageEditState({ dayIdx: activeDayIdx, actId: act.id, url: act.image })} className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full backdrop-blur-md transition-opacity hover:bg-black/70 shadow-lg cursor-pointer z-20 md:opacity-0 md:group-hover/img:opacity-100">
+                                                            <Camera size={16} />
+                                                        </button>
                                                     )}
                                                 </div>
                                                 
-                                                <div className="flex-grow space-y-2 pr-12 md:pr-16">
-                                                    <div className="mb-2">
-                                                        {isEditMode ? (
-                                                            <select 
-                                                                value={act.type} 
-                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'type', e.target.value)} 
-                                                                className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)} appearance-none cursor-pointer outline-none focus:ring-2 ring-indigo-500`}
+                                                <div className="p-4 md:p-5 flex flex-col flex-grow relative min-w-0">
+                                                    <div className="absolute top-4 right-4 z-10 flex gap-2">
+                                                        {!isEditMode && (
+                                                            <button 
+                                                                onClick={(e) => { e.stopPropagation(); setEmbeddedMaps(prev => ({...prev, [act.id]: !prev[act.id]})) }} 
+                                                                className={`transition-colors p-2 rounded-full ${embeddedMaps[act.id] ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700'}`} 
+                                                                title="Toggle Map"
                                                             >
-                                                                {CATEGORY_ICONS.map(cat => (<option key={cat.id} value={cat.id}>{cat.label}</option>))}
-                                                            </select>
-                                                        ) : (
-                                                            <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)}`}>
-                                                                {getTypeIcon(act.type)} {act.type}
+                                                                <MapPin size={18} />
+                                                            </button>
+                                                        )}
+                                                        {isEditMode && (
+                                                            <div className="flex gap-1 items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-slate-800">
+                                                                <div className="relative flex items-center">
+                                                                    <select
+                                                                        value={activeDayIdx}
+                                                                        onChange={(e) => handleMoveActivity(activeDayIdx, Number(e.target.value), act.id)}
+                                                                        className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-md outline-none cursor-pointer py-1.5 pl-2.5 pr-7 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors appearance-none"
+                                                                        title="Move Activity to Day"
+                                                                    >
+                                                                        {trip.days.map((d, i) => (
+                                                                            <option key={d.id} value={i} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-medium">
+                                                                                Move to Day {i + 1}
+                                                                           </option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <ChevronDown size={14} className="absolute right-2 pointer-events-none text-slate-400 dark:text-slate-500" />
+                                                                </div>
+                                                                <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
+                                                                <GripVertical className="text-slate-300 cursor-grab" size={16} />
+                                                                <button onClick={() => handleDeleteActivity(activeDayIdx, act.id)} className="text-red-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                                                                    <Trash2 size={16} />
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>
                                                     
-                                                    {isEditMode ? (
-                                                        <>
-                                                            <input 
-                                                                value={act.title} 
-                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'title', e.target.value)} 
-                                                                className="w-full font-bold text-lg text-zinc-900 dark:text-white bg-transparent border-b border-slate-200 mb-1 focus:outline-none placeholder-slate-400" 
-                                                                placeholder="Activity Title"
-                                                            />
-                                                            <textarea 
-                                                                value={act.desc} 
-                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'desc', e.target.value)} 
-                                                                className="w-full text-xs text-zinc-500 dark:text-slate-400 bg-transparent border border-dashed border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none h-16" 
-                                                                placeholder="Short description..."
-                                                            />
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <h3 className="font-bold text-lg md:text-xl text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-600 transition-colors truncate">{act.title}</h3>
-                                                            <p className="text-sm text-zinc-500 dark:text-slate-400 line-clamp-2">{act.desc}</p>
-                                                        </>
-                                                    )}
-                                                </div>
-                                                
-                                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                                    <details className="group/details w-full">
-                                                        <summary className="list-none flex items-center justify-between w-full cursor-pointer text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider">
-                                                            <span className="flex items-center gap-1">Details & Notes <ChevronRight size={12} className="group-open/details:rotate-90 transition-transform" /></span>
-                                                            <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-                                                                {isEditMode ? (
-                                                                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded p-0.5">
-                                                                        <select 
-                                                                            value={act.currency || 'USD'} 
-                                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'currency', e.target.value)} 
-                                                                            onClick={e => e.stopPropagation()} 
-                                                                            className="bg-transparent text-[10px] font-bold border-none outline-none cursor-pointer w-12"
-                                                                        >
-                                                                            {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
-                                                                        </select>
-                                                                        <input 
-                                                                            type="number" 
-                                                                            placeholder="0" 
-                                                                            className="w-12 bg-transparent outline-none text-right font-mono" 
-                                                                            value={act.cost || ''} 
-                                                                            onChange={(e) => updateActivityCost(activeDayIdx, act.id, e.target.value)} 
-                                                                            onClick={e => e.preventDefault()} 
-                                                                        />
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded">{act.currency || '$'} {act.cost || 0}</span>
-                                                                )}
-                                                            </div>
-                                                        </summary>
-                                                        <div className="pt-3 text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">
+                                                    <div className="flex-grow space-y-2 pr-12 md:pr-16">
+                                                        <div className="mb-2">
                                                             {isEditMode ? (
-                                                                <div className="space-y-3">
-                                                                    <textarea 
-                                                                        value={act.details} 
-                                                                        onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)} 
-                                                                        className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-y" 
-                                                                        placeholder="Add detailed notes, links, or reservations here..."
-                                                                    />
-                                                                    <div className="flex flex-wrap items-center gap-3">
-                                                                        <label className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors text-xs font-bold text-slate-600 dark:text-slate-300">
-                                                                            <Paperclip size={14} /> {act.attachment ? 'Change Attachment' : 'Attach Booking/Image'}
-                                                                            <input type="file" accept="image/*" className="hidden" onChange={(e) => handleActivityAttachmentUpload(activeDayIdx, act.id, e)} />
-                                                                        </label>
-                                                                        {act.attachment && (
-                                                                            <button onClick={(e) => { e.preventDefault(); handleUpdateActivity(activeDayIdx, act.id, 'attachment', null); }} className="text-red-500 hover:text-red-600 text-xs font-bold px-2 py-2">Remove</button>
-                                                                        )}
-                                                                    </div>
-                                                                    {act.attachment && (
-                                                                        <div className="mt-2 w-32 h-32 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800">
-                                                                            <img src={act.attachment} className="w-full h-full object-cover opacity-80" alt="Attachment Preview" />
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                                <select 
+                                                                    value={act.type} 
+                                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'type', e.target.value)} 
+                                                                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)} appearance-none cursor-pointer outline-none focus:ring-2 ring-indigo-500`}
+                                                                >
+                                                                    {CATEGORY_ICONS.map(cat => (<option key={cat.id} value={cat.id}>{cat.label}</option>))}
+                                                                </select>
                                                             ) : (
-                                                                <div className="space-y-3">
-                                                                    <p className="whitespace-pre-wrap">{act.details}</p>
-                                                                    {act.attachment && (
-                                                                         <button onClick={(e) => { e.preventDefault(); setViewingAttachment(act.attachment); }} className="flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors w-fit border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
-                                                                             <FileText size={14} /> View Attachment
-                                                                         </button>
-                                                                    )}
+                                                                <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${getTypeColor(act.type)}`}>
+                                                                    {getTypeIcon(act.type)} {act.type}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        {embeddedMaps[act.id] && (
-                                                            <div className="h-48 mt-3 rounded-xl overflow-hidden bg-slate-100 w-full relative z-20 border border-slate-200 dark:border-slate-700 shadow-inner">
-                                                                <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(act.title + " " + (trip.weatherLocation || ''))}&t=&z=15&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
-                                                            </div>
+                                                        
+                                                        {isEditMode ? (
+                                                            <>
+                                                                <input 
+                                                                    value={act.title} 
+                                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'title', e.target.value)} 
+                                                                    className="w-full font-bold text-lg text-zinc-900 dark:text-white bg-transparent border-b border-slate-200 mb-1 focus:outline-none placeholder-slate-400" 
+                                                                    placeholder="Activity Title"
+                                                                />
+                                                                <textarea 
+                                                                    value={act.desc} 
+                                                                    onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'desc', e.target.value)} 
+                                                                    className="w-full text-xs text-zinc-500 dark:text-slate-400 bg-transparent border border-dashed border-slate-300 rounded p-2 focus:outline-none focus:border-indigo-500 resize-none h-16" 
+                                                                    placeholder="Short description..."
+                                                                />
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <h3 className="font-bold text-lg md:text-xl text-zinc-900 dark:text-white mb-1 group-hover:text-indigo-600 transition-colors truncate">{act.title}</h3>
+                                                                <p className="text-sm text-zinc-500 dark:text-slate-400 line-clamp-2">{act.desc}</p>
+                                                            </>
                                                         )}
-                                                    </details>
+                                                    </div>
+                                                    
+                                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                                        <details className="group/details w-full">
+                                                            <summary className="list-none flex items-center justify-between w-full cursor-pointer text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-wider">
+                                                                <span className="flex items-center gap-1">Details & Notes <ChevronRight size={12} className="group-open/details:rotate-90 transition-transform" /></span>
+                                                                <div className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+                                                                    {isEditMode ? (
+                                                                        <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded p-0.5">
+                                                                            <select 
+                                                                                value={act.currency || 'USD'} 
+                                                                                onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'currency', e.target.value)} 
+                                                                                onClick={e => e.stopPropagation()} 
+                                                                                className="bg-transparent text-[10px] font-bold border-none outline-none cursor-pointer w-12"
+                                                                            >
+                                                                                {CURRENCY_OPTIONS.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                                                            </select>
+                                                                            <input 
+                                                                                type="number" 
+                                                                                placeholder="0" 
+                                                                                className="w-12 bg-transparent outline-none text-right font-mono" 
+                                                                                value={act.cost || ''} 
+                                                                                onChange={(e) => updateActivityCost(activeDayIdx, act.id, e.target.value)} 
+                                                                                onClick={e => e.preventDefault()} 
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded">{act.currency || '$'} {act.cost || 0}</span>
+                                                                    )}
+                                                                </div>
+                                                            </summary>
+                                                            <div className="pt-3 text-sm text-zinc-600 dark:text-slate-300 leading-relaxed">
+                                                                {isEditMode ? (
+                                                                    <div className="space-y-3">
+                                                                        <textarea 
+                                                                            value={act.details} 
+                                                                            onChange={(e) => handleUpdateActivity(activeDayIdx, act.id, 'details', e.target.value)} 
+                                                                            className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-y" 
+                                                                            placeholder="Add detailed notes, links, or reservations here..."
+                                                                        />
+                                                                        <div className="flex flex-wrap items-center gap-3">
+                                                                            <label className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors text-xs font-bold text-slate-600 dark:text-slate-300">
+                                                                                <Paperclip size={14} /> {act.attachment ? 'Change Attachment' : 'Attach Booking/Image'}
+                                                                                <input type="file" accept="image/*" className="hidden" onChange={(e) => handleActivityAttachmentUpload(activeDayIdx, act.id, e)} />
+                                                                            </label>
+                                                                            {act.attachment && (
+                                                                                <button onClick={(e) => { e.preventDefault(); handleUpdateActivity(activeDayIdx, act.id, 'attachment', null); }} className="text-red-500 hover:text-red-600 text-xs font-bold px-2 py-2">Remove</button>
+                                                                            )}
+                                                                        </div>
+                                                                        {act.attachment && (
+                                                                            <div className="mt-2 w-32 h-32 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                                                                <img src={act.attachment} className="w-full h-full object-cover opacity-80" alt="Attachment Preview" />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="space-y-3">
+                                                                        <p className="whitespace-pre-wrap">{act.details}</p>
+                                                                        {act.attachment && (
+                                                                             <button onClick={(e) => { e.preventDefault(); setViewingAttachment(act.attachment); }} className="flex items-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors w-fit border border-indigo-100 dark:border-indigo-800/50 shadow-sm">
+                                                                                 <FileText size={14} /> View Attachment
+                                                                             </button>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {embeddedMaps[act.id] && (
+                                                                <div className="h-48 mt-3 rounded-xl overflow-hidden bg-slate-100 w-full relative z-20 border border-slate-200 dark:border-slate-700 shadow-inner">
+                                                                    <iframe width="100%" height="100%" frameBorder="0" style={{ border: 0 }} src={`https://maps.google.com/maps?q=${encodeURIComponent(act.title + " " + (trip.weatherLocation || ''))}&t=&z=15&ie=UTF8&iwloc=&output=embed`} allowFullScreen></iframe>
+                                                                </div>
+                                                            )}
+                                                        </details>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                             ))}
-                             
-                             {isEditMode && (
-                                <button 
-                                    onClick={() => { const newDays = [...trip.days]; newDays[activeDayIdx].activities.push({ id: Math.random().toString(36), time: '12:00', title: 'New Activity', type: 'attraction', desc: 'Description', image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80', currency: 'USD' }); updateTrip({ days: newDays }); }} 
-                                    className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all gap-2"
-                                >
-                                    <Plus size={24} /> <span className="font-bold">Add Activity</span>
+                                 ))}
+                                 
+                                 {isEditMode && (
+                                    <button 
+                                        onClick={() => { const newDays = [...trip.days]; newDays[activeDayIdx].activities.push({ id: Math.random().toString(36), time: '12:00', title: 'New Activity', type: 'attraction', desc: 'Description', image: 'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=600&q=80', currency: 'USD' }); updateTrip({ days: newDays }); }} 
+                                        className="w-full py-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-3xl flex flex-col items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all gap-2"
+                                    >
+                                        <Plus size={24} /> <span className="font-bold">Add Activity</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                )}
+
+                <Modal isOpen={modalOpen === 'share_success'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Trip Shared!">
+                    <div className="space-y-6">
+                        <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
+                            <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
+                                <Check size={32} />
+                            </div>
+                            <div>
+                                <h4 className="font-black text-xl text-slate-900 dark:text-white mb-1">Trip Published!</h4>
+                                <p className="text-sm text-slate-500">Share this code with friends:</p>
+                            </div>
+                            <div className="flex items-center gap-2 justify-center">
+                                <code className="text-3xl font-mono font-black tracking-widest text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-800">
+                                    {sharedCode}
+                                </code>
+                                <button onClick={() => copyToClipboard(sharedCode, () => alert("Code copied!"))} className="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl transition-colors">
+                                    <Copy size={20} />
                                 </button>
-                            )}
-                        </div>
-                    </div>
-                </main>
-            )}
+                            </div>
 
-            <Modal isOpen={modalOpen === 'share_success'} onClose={() => { setModalOpen(null); setSharedCode(null); }} title="Trip Shared!">
-                <div className="space-y-6">
-                    <div className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-center space-y-4 animate-in zoom-in">
-                        <div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
-                            <Check size={32} />
-                        </div>
-                        <div>
-                            <h4 className="font-black text-xl text-slate-900 dark:text-white mb-1">Trip Published!</h4>
-                            <p className="text-sm text-slate-500">Share this code with friends:</p>
-                        </div>
-                        <div className="flex items-center gap-2 justify-center">
-                            <code className="text-3xl font-mono font-black tracking-widest text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border-2 border-dashed border-indigo-200 dark:border-indigo-800">
-                                {sharedCode}
-                            </code>
-                            <button onClick={() => copyToClipboard(sharedCode, () => alert("Code copied!"))} className="p-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl transition-colors">
-                                <Copy size={20} />
-                            </button>
-                        </div>
-
-                        <div className="pt-2">
-                            <p className="text-xs text-slate-500 mb-2 font-medium">OR Share direct link (No Login Required)</p>
-                            <button 
-                                onClick={() => {
-                                    const url = `${window.location.origin}${window.location.pathname}?shareId=${sharedCode}`;
-                                    copyToClipboard(url, () => alert("Link Copied! Friends can view without logging in."));
-                                }}
-                                className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                            >
-                                <LinkIcon size={16} /> Copy Instant Access Link
-                            </button>
+                            <div className="pt-2">
+                                <p className="text-xs text-slate-500 mb-2 font-medium">OR Share direct link (No Login Required)</p>
+                                <button 
+                                    onClick={() => {
+                                        const url = `${window.location.origin}${window.location.pathname}?shareId=${sharedCode}`;
+                                        copyToClipboard(url, () => alert("Link Copied! Friends can view without logging in."));
+                                    }}
+                                    className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                >
+                                    <LinkIcon size={16} /> Copy Instant Access Link
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </Modal>
-            
-            <Modal isOpen={modalOpen === 'rates'} onClose={() => setModalOpen(null)} title="Exchange Rates">
-                <div className="space-y-4">
-                    <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl text-center">
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                            Reference rates used for automatic budget conversions.
-                            <br/>
-                            <span className="font-bold text-slate-700 dark:text-slate-300">Base Currency: 1.00 USD ($)</span>
-                        </p>
-                    </div>
-                    
-                    <div className="grid gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
-                        {CURRENCY_OPTIONS.map((c) => (
-                            <div key={c.code} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl hover:border-indigo-200 dark:hover:border-indigo-900 transition-colors">
-                                <div className="flex items-center gap-3">
-                                    <img src={getFlagUrl(c.countryCode)} alt={c.code} className="w-8 h-6 object-cover rounded shadow-sm" />
-                                    <div>
-                                        <div className="flex items-center gap-1">
-                                            <span className="font-bold text-slate-900 dark:text-white">{c.code}</span>
-                                            <span className="text-xs text-slate-400 font-mono">({c.symbol})</span>
+                </Modal>
+                
+                <Modal isOpen={modalOpen === 'rates'} onClose={() => setModalOpen(null)} title="Exchange Rates">
+                    <div className="space-y-4">
+                        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-xl text-center">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                Reference rates used for automatic budget conversions.
+                                <br/>
+                                <span className="font-bold text-slate-700 dark:text-slate-300">Base Currency: 1.00 USD ($)</span>
+                            </p>
+                        </div>
+                        
+                        <div className="grid gap-2 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                            {CURRENCY_OPTIONS.map((c) => (
+                                <div key={c.code} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl hover:border-indigo-200 dark:hover:border-indigo-900 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <img src={getFlagUrl(c.countryCode)} alt={c.code} className="w-8 h-6 object-cover rounded shadow-sm" />
+                                        <div>
+                                            <div className="flex items-center gap-1">
+                                                <span className="font-bold text-slate-900 dark:text-white">{c.code}</span>
+                                                <span className="text-xs text-slate-400 font-mono">({c.symbol})</span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{c.name}</p>
                                         </div>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">{c.name}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">
+                                            {EXCHANGE_RATES[c.code]?.toFixed(2) || '-'}
+                                        </p>
+                                        <p className="text-[10px] text-slate-400 font-medium">per 1 USD</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-mono font-bold text-indigo-600 dark:text-indigo-400 text-lg">
-                                        {EXCHANGE_RATES[c.code]?.toFixed(2) || '-'}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400 font-medium">per 1 USD</p>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </Modal>
+                </Modal>
 
-             <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-transparent dark:border-slate-700">
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                            {isDarkMode ? <Moon size={18} className="text-indigo-400"/> : <Sun size={18} className="text-amber-500"/>} App Theme
-                        </span>
-                        <button 
-                            onClick={() => setIsDarkMode(!isDarkMode)} 
-                            className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                        >
-                            <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
-                        </button>
-                    </div>
-                    
-                    <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
+                 <Modal isOpen={modalOpen === 'settings'} onClose={() => setModalOpen(null)} title="Trip Settings">
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between p-4 bg-slate-100 dark:bg-slate-800 rounded-xl border border-transparent dark:border-slate-700">
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                {isDarkMode ? <Moon size={18} className="text-indigo-400"/> : <Sun size={18} className="text-amber-500"/>} App Theme
+                            </span>
+                            <button 
+                                onClick={() => setIsDarkMode(!isDarkMode)} 
+                                className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 focus:outline-none ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                            >
+                                <div className={`w-6 h-6 bg-white rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+                        
+                        <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
 
-                    <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
-                        <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Quick Actions</h4>
-                        <button 
-                            onClick={handleGlobalOptimize} 
-                            className="w-full py-2.5 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg shadow-sm text-sm flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors"
-                        >
-                            <Wand2 size={16} /> Sort All Days by Time
-                        </button>
-                    </div>
-                    
-                    <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
-                    
-                    <section className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trip Name</label>
-                            <input 
-                                type="text" 
-                                value={trip.title} 
-                                onChange={(e) => updateTrip({ title: e.target.value })} 
-                                className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold dark:text-white"
-                            />
-                            <p className="text-[10px] text-slate-400">Pro tip: Type a country like "Trip to Japan" to auto-update cover photo.</p>
+                        <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800/50">
+                            <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-3">Quick Actions</h4>
+                            <button 
+                                onClick={handleGlobalOptimize} 
+                                className="w-full py-2.5 bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold rounded-lg shadow-sm text-sm flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                <Wand2 size={16} /> Sort All Days by Time
+                            </button>
                         </div>
                         
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                <Globe size={12}/> Weather Location
-                            </label>
-                            <CustomIconSelect 
-                                options={countryOptions} 
-                                value={trip.weatherLocation || COUNTRY_DATA.find(c => Math.abs(c.lat - (trip.lat || 0)) < 0.1 && Math.abs(c.lon - (trip.lon || 0)) < 0.1)?.name} 
-                                onChange={(val) => { 
-                                    const selected = COUNTRY_DATA.find(c => c.name === val); 
-                                    if(selected) { 
-                                        updateTrip({ lat: selected.lat, lon: selected.lon, weatherLocation: selected.name }); 
-                                    } 
-                                }} 
-                                placeholder="Select a location..." 
-                            />
-                            <p className="text-[10px] text-slate-400">Updates weather forecasts. Coordinates: {trip.lat?.toFixed(2)}, {trip.lon?.toFixed(2)}</p>
-                        </div>
+                        <div className="w-full h-px bg-slate-100 dark:bg-slate-800"></div>
                         
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                                <DollarSign size={12}/> Trip Currency
-                            </label>
-                            <CustomIconSelect 
-                                options={currencySelectOptions} 
-                                value={trip.currency || 'USD'} 
-                                onChange={(val) => updateTrip({ currency: val })} 
-                                placeholder="Select a currency..." 
-                            />
-                            <p className="text-[10px] text-slate-400">Sets the default currency for budgeting.</p>
-                        </div>
-                        
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label>
-                            <input 
-                                type="text" 
-                                value={trip.coverImage} 
-                                onChange={(e) => updateTrip({ coverImage: e.target.value })} 
-                                className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm dark:text-white"
-                            />
-                        </div>
-                        
-                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label>
-                            <input 
-                                type="date" 
-                                value={trip.startDate} 
-                                onChange={(e) => {
-                                    const newStart = e.target.value;
-                                    const newDays = trip.days.map((day, idx) => {
-                                        const d = createUTCDate(newStart);
-                                        d.setUTCDate(d.getUTCDate() + idx);
-                                        return { ...day, date: d.toISOString().split('T')[0] };
-                                    });
-                                    updateTrip({ startDate: newStart, days: newDays });
-                                }} 
-                                className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
-                            />
-                        </div>
-                        
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                                {trip.companions.map((c, i) => { 
-                                    const name = typeof c === 'string' ? c : c.name; 
-                                    const photo = typeof c === 'object' ? c.photo : null; 
-                                    return (
-                                        <div key={i} className="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm group pr-3 border border-slate-200 dark:border-slate-700 dark:text-slate-200">
-                                            <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center text-[10px] font-bold">
-                                                {photo ? <img src={photo} className="w-full h-full object-cover" /> : name[0]}
-                                            </div>
-                                            <span className="font-medium">{name}</span>
-                                            <button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500">
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    ); 
-                                })}
+                        <section className="space-y-4">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trip Name</label>
+                                <input 
+                                    type="text" 
+                                    value={trip.title} 
+                                    onChange={(e) => updateTrip({ title: e.target.value })} 
+                                    className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none font-bold dark:text-white"
+                                />
+                                <p className="text-[10px] text-slate-400">Pro tip: Type a country like "Trip to Japan" to auto-update cover photo.</p>
                             </div>
                             
-                            <form onSubmit={handleAddCompanion} className="flex gap-2 items-center bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 w-full">
-                                <label className="cursor-pointer p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors relative group flex-shrink-0">
-                                    {newCompanionPhoto ? (
-                                        <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-indigo-500">
-                                            <img src={URL.createObjectURL(newCompanionPhoto)} className="w-full h-full object-cover" />
-                                        </div>
-                                    ) : (
-                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
-                                            <ImagePlus size={16} className="text-slate-400 group-hover:text-indigo-600 dark:text-slate-400 dark:group-hover:text-indigo-400" />
-                                        </div>
-                                    )}
-                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && setNewCompanionPhoto(e.target.files[0])}/>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <Globe size={12}/> Weather Location
                                 </label>
-                                <input 
-                                    value={newCompanionName} 
-                                    onChange={(e) => setNewCompanionName(e.target.value)} 
-                                    placeholder="Add name..." 
-                                    className="flex-grow min-w-0 bg-transparent border-none outline-none text-sm font-medium placeholder:text-slate-400 dark:text-white h-10" 
-                                    maxLength={20}
+                                <CustomIconSelect 
+                                    options={countryOptions} 
+                                    value={trip.weatherLocation || COUNTRY_DATA.find(c => Math.abs(c.lat - (trip.lat || 0)) < 0.1 && Math.abs(c.lon - (trip.lon || 0)) < 0.1)?.name} 
+                                    onChange={(val) => { 
+                                        const selected = COUNTRY_DATA.find(c => c.name === val); 
+                                        if(selected) { 
+                                            updateTrip({ lat: selected.lat, lon: selected.lon, weatherLocation: selected.name }); 
+                                        } 
+                                    }} 
+                                    placeholder="Select a location..." 
                                 />
-                                <button type="submit" disabled={!newCompanionName.trim()} className="flex-shrink-0 bg-indigo-600 text-white h-9 px-4 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-500/30">
-                                    Add
-                                </button>
-                            </form>
-                        </div>
-                    </section>
-                </div>
-              </Modal>
-            
-            <Modal isOpen={!!imageEditState} onClose={() => setImageEditState(null)} title="Change Activity Photo">
-                <div className="space-y-4">
-                    <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center relative border border-slate-200 dark:border-slate-700">
-                        <img src={imageEditState?.url} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558981806-ec527fa84c3d?auto=format&fit=crop&w=600&q=80'} />
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10">
-                            <span className="bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">Preview</span>
-                        </div>
+                                <p className="text-[10px] text-slate-400">Updates weather forecasts. Coordinates: {trip.lat?.toFixed(2)}, {trip.lon?.toFixed(2)}</p>
+                            </div>
+                            
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                    <DollarSign size={12}/> Trip Currency
+                                </label>
+                                <CustomIconSelect 
+                                    options={currencySelectOptions} 
+                                    value={trip.currency || 'USD'} 
+                                    onChange={(val) => updateTrip({ currency: val })} 
+                                    placeholder="Select a currency..." 
+                                />
+                                <p className="text-[10px] text-slate-400">Sets the default currency for budgeting.</p>
+                            </div>
+                            
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Cover Image URL</label>
+                                <input 
+                                    type="text" 
+                                    value={trip.coverImage} 
+                                    onChange={(e) => updateTrip({ coverImage: e.target.value })} 
+                                    className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none text-sm dark:text-white"
+                                />
+                            </div>
+                            
+                             <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start Date</label>
+                                <input 
+                                    type="date" 
+                                    value={trip.startDate} 
+                                    onChange={(e) => {
+                                        const newStart = e.target.value;
+                                        const newDays = trip.days.map((day, idx) => {
+                                            const d = createUTCDate(newStart);
+                                            d.setUTCDate(d.getUTCDate() + idx);
+                                            return { ...day, date: d.toISOString().split('T')[0] };
+                                        });
+                                        updateTrip({ startDate: newStart, days: newDays });
+                                    }} 
+                                    className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 border-none focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                                />
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Companions</label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {trip.companions.map((c, i) => { 
+                                        const name = typeof c === 'string' ? c : c.name; 
+                                        const photo = typeof c === 'object' ? c.photo : null; 
+                                        return (
+                                            <div key={i} className="flex items-center gap-2 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm group pr-3 border border-slate-200 dark:border-slate-700 dark:text-slate-200">
+                                                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center text-[10px] font-bold">
+                                                    {photo ? <img src={photo} className="w-full h-full object-cover" /> : name[0]}
+                                                </div>
+                                                <span className="font-medium">{name}</span>
+                                                <button onClick={() => updateTrip({ companions: trip.companions.filter((_, idx) => idx !== i) })} className="text-slate-400 hover:text-red-500">
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ); 
+                                    })}
+                                </div>
+                                
+                                <form onSubmit={handleAddCompanion} className="flex gap-2 items-center bg-slate-100 dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 w-full">
+                                    <label className="cursor-pointer p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors relative group flex-shrink-0">
+                                        {newCompanionPhoto ? (
+                                            <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-indigo-500">
+                                                <img src={URL.createObjectURL(newCompanionPhoto)} className="w-full h-full object-cover" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
+                                                <ImagePlus size={16} className="text-slate-400 group-hover:text-indigo-600 dark:text-slate-400 dark:group-hover:text-indigo-400" />
+                                            </div>
+                                        )}
+                                        <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && setNewCompanionPhoto(e.target.files[0])}/>
+                                    </label>
+                                    <input 
+                                        value={newCompanionName} 
+                                        onChange={(e) => setNewCompanionName(e.target.value)} 
+                                        placeholder="Add name..." 
+                                        className="flex-grow min-w-0 bg-transparent border-none outline-none text-sm font-medium placeholder:text-slate-400 dark:text-white h-10" 
+                                        maxLength={20}
+                                    />
+                                    <button type="submit" disabled={!newCompanionName.trim()} className="flex-shrink-0 bg-indigo-600 text-white h-9 px-4 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-indigo-700 active:scale-95 transition-all shadow-sm shadow-indigo-500/30">
+                                        Add
+                                    </button>
+                                </form>
+                            </div>
+                        </section>
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Image URL</label>
-                        <input 
-                            value={imageEditState?.url || ''} 
-                            onChange={(e) => setImageEditState(prev => ({ ...prev, url: e.target.value }))} 
-                            className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none text-sm border-none focus:ring-2 focus:ring-indigo-500 dark:text-white" 
-                            placeholder="https://..."
+                  </Modal>
+                
+                <Modal isOpen={modalOpen === 'smart_import'} onClose={() => { setModalOpen(null); setSmartImportText(''); }} title="Smart Import Itinerary">
+                    <div className="space-y-4">
+                        <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl text-indigo-800 dark:text-indigo-200 text-sm">
+                            <p className="font-bold mb-2 flex items-center gap-2"><Sparkles size={16}/> Paste from Excel, Word, or Notepad!</p>
+                            <p className="text-xs opacity-80 leading-relaxed">
+                                Our smart parser will automatically convert your text into itinerary cards. Ensure each day starts with <strong>"Day 1"</strong> and activities start with a time like <strong>"3:00 PM"</strong> or <strong>"15:00"</strong>. 
+                                <br/><br/><strong className="text-red-500">Warning:</strong> Importing will overwrite your current trip days.
+                            </p>
+                        </div>
+                        <textarea 
+                            value={smartImportText}
+                            onChange={(e) => setSmartImportText(e.target.value)}
+                            className="w-full h-64 bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none dark:text-white font-mono"
+                            placeholder={"Example:\nDay 1: Arrival\n3:15 PM Arrive at Airport\n4:30 PM Check-in to Hotel\n\nDay 2: Theme Park\n9:00 AM Enter Park\n- Ride Rollercoaster"}
                         />
-                        <p className="text-[10px] text-slate-400">Paste a direct link to an image (ending in .jpg, .png, etc.)</p>
+                        <div className="flex gap-2 justify-end pt-2">
+                            <button onClick={() => { setModalOpen(null); setSmartImportText(''); }} className="px-4 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                Cancel
+                            </button>
+                            <button onClick={handleExecuteSmartImport} disabled={!smartImportText.trim()} className="px-6 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                <Wand2 size={18} /> Parse & Import
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex gap-2 justify-end pt-2">
-                        <button onClick={() => setImageEditState(null)} className="px-4 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                            Cancel
-                        </button>
-                        <button onClick={() => { handleUpdateActivity(imageEditState.dayIdx, imageEditState.actId, 'image', imageEditState.url); setImageEditState(null); }} className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">
-                            Save Photo
+                </Modal>
+
+                <Modal isOpen={!!imageEditState} onClose={() => setImageEditState(null)} title="Change Activity Photo">
+                    <div className="space-y-4">
+                        <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden flex items-center justify-center relative border border-slate-200 dark:border-slate-700">
+                            <img src={imageEditState?.url} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1558981806-ec527fa84c3d?auto=format&fit=crop&w=600&q=80'} />
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10">
+                                <span className="bg-black/50 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">Preview</span>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Image URL</label>
+                            <input 
+                                value={imageEditState?.url || ''} 
+                                onChange={(e) => setImageEditState(prev => ({ ...prev, url: e.target.value }))} 
+                                className="w-full bg-slate-100 dark:bg-slate-800 rounded-xl px-4 py-3 outline-none text-sm border-none focus:ring-2 focus:ring-indigo-500 dark:text-white" 
+                                placeholder="https://..."
+                            />
+                            <p className="text-[10px] text-slate-400">Paste a direct link to an image (ending in .jpg, .png, etc.)</p>
+                        </div>
+                        <div className="flex gap-2 justify-end pt-2">
+                            <button onClick={() => setImageEditState(null)} className="px-4 py-2 rounded-xl font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                Cancel
+                            </button>
+                            <button onClick={() => { handleUpdateActivity(imageEditState.dayIdx, imageEditState.actId, 'image', imageEditState.url); setImageEditState(null); }} className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/30">
+                                Save Photo
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+                
+                <Modal isOpen={!!viewingAttachment} onClose={() => setViewingAttachment(null)} title="Attachment Preview">
+                    <div className="flex flex-col items-center">
+                        <img src={viewingAttachment} alt="Attachment" className="max-w-full rounded-lg border border-slate-200 dark:border-slate-700 shadow-md max-h-[70vh] object-contain bg-slate-100 dark:bg-slate-900" />
+                        <button onClick={() => setViewingAttachment(null)} className="mt-4 w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                            Close
                         </button>
                     </div>
-                </div>
-            </Modal>
-            
-            <Modal isOpen={!!viewingAttachment} onClose={() => setViewingAttachment(null)} title="Attachment Preview">
-                <div className="flex flex-col items-center">
-                    <img src={viewingAttachment} alt="Attachment" className="max-w-full rounded-lg border border-slate-200 dark:border-slate-700 shadow-md max-h-[70vh] object-contain bg-slate-100 dark:bg-slate-900" />
-                    <button onClick={() => setViewingAttachment(null)} className="mt-4 w-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                        Close
-                    </button>
-                </div>
-            </Modal>
+                </Modal>
+            </div>
         </div>
     );
 }
