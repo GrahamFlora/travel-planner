@@ -300,6 +300,23 @@ const createUTCDate = (dateStr) => {
     return new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
 };
 
+const parseTimeForSorting = (timeStr) => {
+    if(!timeStr) return 9999; 
+    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i); 
+    if (!match) return 9999; 
+    let [_, hours, minutes, period] = match; 
+    hours = parseInt(hours); 
+    minutes = parseInt(minutes); 
+    if (period) { 
+        if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12; 
+        if (period.toUpperCase() === 'AM' && hours === 12) hours = 0; 
+    } 
+    let score = hours * 60 + minutes; 
+    // If it is a time range, add a fraction so it sorts AFTER the exact point-in-time
+    if (timeStr.includes('-')) score += 0.1; 
+    return score;
+};
+
 // --- CUSTOM UI COMPONENTS ---
 
 const NavButton = ({ icon: Icon, label, active, onClick }) => (
@@ -573,7 +590,9 @@ const useWeather = (lat, lon, startDate, daysCount = 7) => {
                 const diffTime = startObj - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
                 
-                const isFuture = diffDays > 10;
+                // Open-Meteo forecast API strictly fails if end_date > 14-16 days from today.
+                // If the trip extends beyond 14 days from today, safely fall back to historical.
+                const isFuture = (diffDays + daysCount) > 14; 
                 const isPast = diffDays < -2;
                 const shouldUseHistorical = isFuture || isPast;
 
@@ -2009,20 +2028,7 @@ export default function TravelApp() {
     const handleGlobalOptimize = () => {
         const newDays = trip.days.map(day => {
              const sortedActivities = [...day.activities].sort((a, b) => {
-                 const parseTime = (timeStr) => { 
-                    if(!timeStr) return 9999; 
-                    const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i); 
-                    if (!match) return 9999; 
-                    let [_, hours, minutes, period] = match; 
-                    hours = parseInt(hours); 
-                    minutes = parseInt(minutes); 
-                    if (period) { 
-                        if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12; 
-                        if (period.toUpperCase() === 'AM' && hours === 12) hours = 0; 
-                    } 
-                    return hours * 60 + minutes; 
-                };
-                return parseTime(a.time) - parseTime(b.time);
+                 return parseTimeForSorting(a.time) - parseTimeForSorting(b.time);
              });
              return { ...day, activities: sortedActivities };
         });
@@ -2238,20 +2244,7 @@ export default function TravelApp() {
     const handleOptimizeRoute = () => {
         const newDays = [...trip.days];
         const currentActivities = [...newDays[activeDayIdx].activities];
-        const parseTime = (timeStr) => { 
-            if(!timeStr) return 9999; 
-            const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i); 
-            if (!match) return 9999; 
-            let [_, hours, minutes, period] = match; 
-            hours = parseInt(hours); 
-            minutes = parseInt(minutes); 
-            if (period) { 
-                if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12; 
-                if (period.toUpperCase() === 'AM' && hours === 12) hours = 0; 
-            } 
-            return hours * 60 + minutes; 
-        };
-        currentActivities.sort((a, b) => parseTime(a.time) - parseTime(b.time));
+        currentActivities.sort((a, b) => parseTimeForSorting(a.time) - parseTimeForSorting(b.time));
         newDays[activeDayIdx].activities = currentActivities;
         updateTrip({ days: newDays });
         alert("Route optimized based on time!");
