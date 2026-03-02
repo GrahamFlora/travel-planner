@@ -74,7 +74,8 @@ import {
   Paperclip,
   FileText,
   Fingerprint,
-  Printer
+  Printer,
+  Film
 } from 'lucide-react';
 
 import { initializeApp } from "firebase/app";
@@ -344,6 +345,35 @@ const parseTimeForSorting = (timeStr) => {
     return score;
 };
 
+// --- VIDEO URL PARSER ---
+const parseVideoUrl = (url) => {
+    try {
+        const urlObj = new URL(url);
+        if (urlObj.hostname.includes('tiktok.com')) {
+            const match = urlObj.pathname.match(/\/video\/(\d+)/);
+            if (match) return { platform: 'TikTok', embedUrl: `https://www.tiktok.com/embed/v2/${match[1]}` };
+        }
+        if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
+            let videoId = '';
+            if (urlObj.hostname.includes('youtu.be')) {
+                videoId = urlObj.pathname.slice(1);
+            } else if (urlObj.pathname.includes('/shorts/')) {
+                videoId = urlObj.pathname.split('/shorts/')[1].split('?')[0];
+            } else {
+                videoId = urlObj.searchParams.get('v');
+            }
+            if (videoId) return { platform: 'YouTube', embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=0&loop=1&playlist=${videoId}` };
+        }
+        if (urlObj.hostname.includes('instagram.com')) {
+            const match = urlObj.pathname.match(/\/(?:reel|p)\/([a-zA-Z0-9_-]+)/);
+            if (match) return { platform: 'Instagram', embedUrl: `https://www.instagram.com/p/${match[1]}/embed/` };
+        }
+    } catch (e) {
+        console.error("Invalid Video URL", e);
+    }
+    return null;
+};
+
 // --- CUSTOM UI COMPONENTS ---
 
 const NavButton = ({ icon: Icon, label, active, onClick }) => (
@@ -359,11 +389,12 @@ const NavButton = ({ icon: Icon, label, active, onClick }) => (
 );
 
 const BottomNav = ({ viewMode, setViewMode }) => (
-  <div className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-3xl z-50 flex justify-around items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] px-2 py-1 safe-area-bottom ring-1 ring-slate-900/5 dark:ring-white/10 print:hidden">
+  <div className="fixed bottom-4 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:max-w-xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-3xl z-50 flex justify-around items-center shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.5)] px-2 py-1 safe-area-bottom ring-1 ring-slate-900/5 dark:ring-white/10 print:hidden">
      <NavButton icon={LayoutList} label="Itinerary" active={viewMode === 'timeline'} onClick={() => setViewMode('timeline')} />
      <NavButton icon={CalendarIcon} label="Calendar" active={viewMode === 'calendar'} onClick={() => setViewMode('calendar')} />
      <NavButton icon={DollarSign} label="Budget" active={viewMode === 'budget'} onClick={() => setViewMode('budget')} />
      <NavButton icon={ClipboardList} label="Packing" active={viewMode === 'checklist'} onClick={() => setViewMode('checklist')} />
+     <NavButton icon={Film} label="Reels" active={viewMode === 'reels'} onClick={() => setViewMode('reels')} />
   </div>
 );
 
@@ -1584,6 +1615,119 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm, exchang
     );
 };
 
+// --- REELS VIEW (TIKTOK STYLE) ---
+const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
+    const [isAdding, setIsAdding] = useState(false);
+    const [newUrl, setNewUrl] = useState('');
+    const [newTitle, setNewTitle] = useState('');
+    const reels = trip.reels || [];
+
+    const handleAdd = (e) => {
+        e.preventDefault();
+        const parsed = parseVideoUrl(newUrl);
+        if (!parsed) {
+            alert("Unsupported URL. Please paste a valid TikTok, YouTube, or Instagram link.");
+            return;
+        }
+        const newReel = {
+            id: Math.random().toString(36).substr(2, 9),
+            url: newUrl,
+            embedUrl: parsed.embedUrl,
+            platform: parsed.platform,
+            title: newTitle.trim() || 'Untitled Place',
+            createdAt: Date.now()
+        };
+        updateTrip({ reels: [...reels, newReel] });
+        setIsAdding(false);
+        setNewUrl('');
+        setNewTitle('');
+    };
+
+    const handleDelete = (id) => {
+        requestConfirm("Remove Reel", "Are you sure you want to remove this video from your trip?", () => {
+            updateTrip({ reels: reels.filter(r => r.id !== id) });
+        });
+    };
+
+    return (
+        <main className="max-w-md mx-auto mt-4 px-4 pb-32 animate-in fade-in">
+            <div className="flex justify-between items-center mb-4 px-2">
+                <div>
+                    <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Film className="text-indigo-600" size={20} />
+                        Inspo Reels
+                    </h2>
+                    <p className="text-xs text-slate-500">Swipe through places to visit</p>
+                </div>
+                {isEditMode && (
+                    <button 
+                        onClick={() => setIsAdding(!isAdding)} 
+                        className={`p-2.5 rounded-full transition-colors ${isAdding ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 hover:bg-indigo-200'}`}
+                    >
+                        {isAdding ? <X size={20} /> : <Plus size={20} />}
+                    </button>
+                )}
+            </div>
+
+            {isAdding && (
+                <form onSubmit={handleAdd} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-lg mb-6 space-y-3 animate-in slide-in-from-top-2">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant / Spot Name</label>
+                        <input required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Axtion Editz Cafe" className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Video Link</label>
+                        <input required value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="Paste TikTok or YouTube link..." className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white" />
+                    </div>
+                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-colors flex items-center justify-center gap-2">
+                        <Plus size={18} /> Add Reel
+                    </button>
+                </form>
+            )}
+
+            <div className="h-[70vh] max-h-[800px] w-full bg-black rounded-[2rem] shadow-2xl overflow-y-scroll snap-y snap-mandatory custom-scrollbar border-4 border-slate-800 relative">
+                {reels.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-500 p-6 text-center">
+                        <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
+                            <Film size={32} className="opacity-50 text-white" />
+                        </div>
+                        <p className="font-bold text-white mb-1">Your feed is empty</p>
+                        <p className="text-sm">Turn on Edit mode to add TikToks or YouTube Shorts of restaurants and spots you want to visit!</p>
+                    </div>
+                ) : (
+                    reels.map(reel => (
+                        <div key={reel.id} className="w-full h-full snap-start snap-always relative bg-black flex flex-col justify-center items-center">
+                            <iframe
+                                src={reel.embedUrl}
+                                className="w-full h-full border-none max-w-sm"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowFullScreen
+                            ></iframe>
+                            
+                            <div className="absolute bottom-0 left-0 right-0 p-6 pt-12 bg-gradient-to-t from-black via-black/60 to-transparent flex justify-between items-end pointer-events-none">
+                                <div>
+                                    <h3 className="font-bold text-xl text-white drop-shadow-md leading-tight mb-1">{reel.title}</h3>
+                                    <span className="inline-block px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-[10px] font-bold uppercase tracking-wider text-white">
+                                        {reel.platform}
+                                    </span>
+                                </div>
+                                {isEditMode && (
+                                    <button 
+                                        onClick={() => handleDelete(reel.id)} 
+                                        className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full pointer-events-auto transition-transform active:scale-95 shadow-xl"
+                                    >
+                                        <Trash2 size={20} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </main>
+    );
+};
+
 // --- REDESIGNED DASHBOARD ---
 const DashboardView = ({ trips, onSelectTrip, onNewTrip, onSignOut, onImportTrip, userEmail, onDeleteTrip, onShareTrip, isDarkMode, onToggleTheme }) => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -2128,7 +2272,8 @@ export default function TravelApp() {
             lon: 114.1694, 
             currency: 'USD', 
             days: [{ id: 'd1', date: new Date().toISOString().split('T')[0], title: 'Day 1', activities: [] }],
-            checklist: [] 
+            checklist: [],
+            reels: []
         };
         setTrips(prev => [...prev, newTrip]);
     };
@@ -2627,6 +2772,8 @@ export default function TravelApp() {
                 
                 {viewMode === 'checklist' && (<ChecklistView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} requestConfirm={requestConfirm} />)}
                 
+                {viewMode === 'reels' && (<ReelsView trip={trip} updateTrip={updateTrip} isEditMode={isEditMode} requestConfirm={requestConfirm} />)}
+
                 {viewMode === 'timeline' && (
                     <main className="max-w-6xl mx-auto px-4 -mt-8 relative z-30 pb-20">
                         <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-x-auto flex gap-2 no-scrollbar mb-8 sticky top-20 z-40 mt-8">
