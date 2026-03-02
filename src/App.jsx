@@ -1615,7 +1615,77 @@ const BudgetView = ({ currentUser, isEditMode, db, trip, requestConfirm, exchang
     );
 };
 
-// --- REELS VIEW (TIKTOK STYLE) ---
+const ReelSlide = ({ reel, isEditMode, onDelete }) => {
+    const slideRef = useRef(null);
+    const iframeRef = useRef(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (!entry.isIntersecting && iframeRef.current) {
+                    // Universally stops audio: briefly clears src then restores
+                    // Works for YouTube, TikTok, and Instagram iframes
+                    const savedSrc = iframeRef.current.src;
+                    iframeRef.current.src = 'about:blank';
+                    // Small timeout ensures browser registers the src clear
+                    setTimeout(() => {
+                        if (iframeRef.current) {
+                            iframeRef.current.src = savedSrc;
+                        }
+                    }, 80);
+                }
+            },
+            {
+                // Trigger when less than 50% of the slide is visible
+                threshold: 0.5,
+                // Observe within the scrolling phone container
+                root: slideRef.current?.closest('.reels-scroll-container') || null,
+            }
+        );
+
+        if (slideRef.current) observer.observe(slideRef.current);
+        return () => observer.disconnect();
+    }, [reel.embedUrl]);
+
+    return (
+        <div
+            ref={slideRef}
+            className="w-full flex-shrink-0 snap-start snap-always relative bg-black overflow-hidden"
+            style={{ height: '100%' }}
+        >
+            {/* FIX 1: inset-0 instead of top-1/2 + translate — no more top crop */}
+            <iframe
+                ref={iframeRef}
+                src={reel.embedUrl}
+                className="absolute inset-0 w-full h-full border-none"
+                style={{ pointerEvents: isEditMode ? 'none' : 'auto' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+            />
+
+            {/* Gradient overlay + title */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 pt-32 bg-gradient-to-t from-black via-black/50 to-transparent flex justify-between items-end pointer-events-none z-10">
+                <div>
+                    <h3 className="font-bold text-xl text-white drop-shadow-md leading-tight mb-1">
+                        {reel.title}
+                    </h3>
+                    <span className="inline-block px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-[10px] font-bold uppercase tracking-wider text-white">
+                        {reel.platform}
+                    </span>
+                </div>
+                {isEditMode && (
+                    <button
+                        onClick={() => onDelete(reel.id)}
+                        className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full pointer-events-auto transition-transform active:scale-95 shadow-xl"
+                    >
+                        <Trash2 size={20} />
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+};
+
 const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     const [isAdding, setIsAdding] = useState(false);
     const [newUrl, setNewUrl] = useState('');
@@ -1635,7 +1705,7 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
             embedUrl: parsed.embedUrl,
             platform: parsed.platform,
             title: newTitle.trim() || 'Untitled Place',
-            createdAt: Date.now()
+            createdAt: Date.now(),
         };
         updateTrip({ reels: [...reels, newReel] });
         setIsAdding(false);
@@ -1645,12 +1715,13 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
 
     const handleDelete = (id) => {
         requestConfirm("Remove Reel", "Are you sure you want to remove this video from your trip?", () => {
-            updateTrip({ reels: reels.filter(r => r.id !== id) });
+            updateTrip({ reels: reels.filter((r) => r.id !== id) });
         });
     };
 
     return (
         <main className="max-w-md mx-auto mt-4 px-4 pb-32 animate-in fade-in">
+            {/* Header */}
             <div className="flex justify-between items-center mb-4 px-2">
                 <div>
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1660,69 +1731,84 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                     <p className="text-xs text-slate-500">Swipe through places to visit</p>
                 </div>
                 {isEditMode && (
-                    <button 
-                        onClick={() => setIsAdding(!isAdding)} 
-                        className={`p-2.5 rounded-full transition-colors ${isAdding ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 hover:bg-indigo-200'}`}
+                    <button
+                        onClick={() => setIsAdding(!isAdding)}
+                        className={`p-2.5 rounded-full transition-colors ${
+                            isAdding
+                                ? 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+                                : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 hover:bg-indigo-200'
+                        }`}
                     >
                         {isAdding ? <X size={20} /> : <Plus size={20} />}
                     </button>
                 )}
             </div>
 
+            {/* Add reel form */}
             {isAdding && (
-                <form onSubmit={handleAdd} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-lg mb-6 space-y-3 animate-in slide-in-from-top-2">
+                <form
+                    onSubmit={handleAdd}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-lg mb-6 space-y-3 animate-in slide-in-from-top-2"
+                >
                     <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant / Spot Name</label>
-                        <input required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Axtion Editz Cafe" className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Restaurant / Spot Name
+                        </label>
+                        <input
+                            required
+                            value={newTitle}
+                            onChange={(e) => setNewTitle(e.target.value)}
+                            placeholder="e.g., Axtion Editz Cafe"
+                            className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                        />
                     </div>
                     <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Video Link</label>
-                        <input required value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder="Paste TikTok or YouTube link..." className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white" />
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                            Video Link
+                        </label>
+                        <input
+                            required
+                            value={newUrl}
+                            onChange={(e) => setNewUrl(e.target.value)}
+                            placeholder="Paste TikTok, YouTube, or Instagram link..."
+                            className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white"
+                        />
                     </div>
-                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-colors flex items-center justify-center gap-2">
+                    <button
+                        type="submit"
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-indigo-500/30 transition-colors flex items-center justify-center gap-2"
+                    >
                         <Plus size={18} /> Add Reel
                     </button>
                 </form>
             )}
 
-            <div className="mx-auto w-full max-w-[340px] h-[75vh] max-h-[800px] bg-black rounded-3xl shadow-2xl overflow-y-scroll snap-y snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative border-[6px] border-slate-900 dark:border-slate-800">
+            {/* Phone frame */}
+            <div className="mx-auto w-full max-w-[340px] h-[75vh] max-h-[800px] bg-black rounded-3xl shadow-2xl overflow-hidden border-[6px] border-slate-900 dark:border-slate-800 relative">
                 {reels.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-500 p-6 text-center">
                         <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
                             <Film size={32} className="opacity-50 text-white" />
                         </div>
                         <p className="font-bold text-white mb-1">Your feed is empty</p>
-                        <p className="text-sm">Turn on Edit mode to add TikToks or YouTube Shorts of restaurants and spots you want to visit!</p>
+                        <p className="text-sm">
+                            Turn on Edit mode to add TikToks or YouTube Shorts of restaurants and
+                            spots you want to visit!
+                        </p>
                     </div>
                 ) : (
-                    reels.map(reel => (
-                        <div key={reel.id} className="w-full h-full snap-start snap-always relative bg-black flex flex-col justify-center items-center overflow-hidden">
-                            <iframe
-                                src={reel.embedUrl}
-                                className="w-[110%] h-[110%] max-w-none border-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-                                style={{ pointerEvents: isEditMode ? 'none' : 'auto' }}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowFullScreen
-                            ></iframe>
-                            
-                            <div className="absolute bottom-0 left-0 right-0 p-6 pt-32 bg-gradient-to-t from-black via-black/50 to-transparent flex justify-between items-end pointer-events-none z-10">
-                                <div>
-                                    <h3 className="font-bold text-xl text-white drop-shadow-md leading-tight mb-1">{reel.title}</h3>
-                                    <span className="inline-block px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-[10px] font-bold uppercase tracking-wider text-white">
-                                        {reel.platform}
-                                    </span>
-                                </div>
-                                {isEditMode && (
-                                    <button 
-                                        onClick={() => handleDelete(reel.id)} 
-                                        className="p-3 bg-red-500 hover:bg-red-600 text-white rounded-full pointer-events-auto transition-transform active:scale-95 shadow-xl"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))
+                    // FIX 2: flex-col container so slides stack full-height cleanly
+                    // reels-scroll-container class is used by IntersectionObserver root
+                    <div className="reels-scroll-container w-full h-full overflow-y-scroll snap-y snap-mandatory flex flex-col [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+                        {reels.map((reel) => (
+                            <ReelSlide
+                                key={reel.id}
+                                reel={reel}
+                                isEditMode={isEditMode}
+                                onDelete={handleDelete}
+                            />
+                        ))}
+                    </div>
                 )}
             </div>
         </main>
