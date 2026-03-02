@@ -1650,8 +1650,8 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
     };
 
     return (
-        <main className="max-w-md mx-auto mt-4 px-4 pb-32 animate-in fade-in">
-            <div className="flex justify-between items-center mb-4 px-2">
+        <main className="w-full max-w-md mx-auto md:mt-4 pb-20 md:pb-32 animate-in fade-in flex flex-col h-[100dvh] md:h-auto">
+            <div className="flex justify-between items-center mb-4 px-6 pt-6 md:px-0 md:pt-0 flex-shrink-0">
                 <div>
                     <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                         <Film className="text-indigo-600" size={20} />
@@ -1670,7 +1670,7 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
             </div>
 
             {isAdding && (
-                <form onSubmit={handleAdd} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-lg mb-6 space-y-3 animate-in slide-in-from-top-2">
+                <form onSubmit={handleAdd} className="mx-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-lg mb-6 space-y-3 animate-in slide-in-from-top-2 flex-shrink-0">
                     <div className="space-y-1">
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant / Spot Name</label>
                         <input required value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Axtion Editz Cafe" className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:text-white" />
@@ -1685,7 +1685,7 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                 </form>
             )}
 
-            <div className="h-[75vh] max-h-[850px] w-full bg-black rounded-3xl md:rounded-[2rem] shadow-2xl overflow-y-scroll snap-y snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative">
+            <div className="flex-grow md:h-[75vh] md:max-h-[850px] w-full bg-black md:rounded-[2rem] shadow-2xl overflow-y-scroll snap-y snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative">
                 {reels.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-500 p-6 text-center">
                         <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
@@ -1699,7 +1699,8 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                         <div key={reel.id} className="w-full h-full snap-start snap-always relative bg-black flex flex-col justify-center items-center overflow-hidden">
                             <iframe
                                 src={reel.embedUrl}
-                                className="w-full h-full border-none absolute inset-0"
+                                className="w-[105%] h-[105%] border-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                                style={{ pointerEvents: isEditMode ? 'none' : 'auto' }}
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowFullScreen
                             ></iframe>
