@@ -1685,7 +1685,7 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                 </form>
             )}
 
-            <div className="h-[70vh] max-h-[800px] w-full bg-black rounded-[2rem] shadow-2xl overflow-y-scroll snap-y snap-mandatory custom-scrollbar border-4 border-slate-800 relative">
+            <div className="h-[75vh] max-h-[850px] w-full bg-black rounded-3xl md:rounded-[2rem] shadow-2xl overflow-y-scroll snap-y snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative">
                 {reels.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-slate-500 p-6 text-center">
                         <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mb-4">
@@ -1696,15 +1696,15 @@ const ReelsView = ({ trip, updateTrip, isEditMode, requestConfirm }) => {
                     </div>
                 ) : (
                     reels.map(reel => (
-                        <div key={reel.id} className="w-full h-full snap-start snap-always relative bg-black flex flex-col justify-center items-center">
+                        <div key={reel.id} className="w-full h-full snap-start snap-always relative bg-black flex flex-col justify-center items-center overflow-hidden">
                             <iframe
                                 src={reel.embedUrl}
-                                className="w-full h-full border-none max-w-sm"
+                                className="w-full h-full border-none absolute inset-0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                                 allowFullScreen
                             ></iframe>
                             
-                            <div className="absolute bottom-0 left-0 right-0 p-6 pt-12 bg-gradient-to-t from-black via-black/60 to-transparent flex justify-between items-end pointer-events-none">
+                            <div className="absolute bottom-0 left-0 right-0 p-6 pt-32 bg-gradient-to-t from-black via-black/50 to-transparent flex justify-between items-end pointer-events-none z-10">
                                 <div>
                                     <h3 className="font-bold text-xl text-white drop-shadow-md leading-tight mb-1">{reel.title}</h3>
                                     <span className="inline-block px-2 py-0.5 bg-white/20 backdrop-blur-md rounded text-[10px] font-bold uppercase tracking-wider text-white">
